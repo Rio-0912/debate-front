@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { Clock, Star, Settings, X, Paperclip, Send,Bot } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Clock, Star, Settings, X, Paperclip, Send, Bot, User } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
+import Modal from '../components/Modal';
+import NewChatModal from '../components/NewChatModal';
 
 const Chat = () => {
   const [selectedChat, setSelectedChat] = useState(1);
@@ -92,6 +94,9 @@ const Chat = () => {
   ];
 
   const [newMessage, setNewMessage] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+  const messagesEndRef = useRef(null);
 
   const handleSendMessage = () => {
     if (newMessage.trim()) {
@@ -107,10 +112,24 @@ const Chat = () => {
     }
   };
 
+  const handleDeleteChat = (chatId) => {
+    const updatedChats = sidebarChats.filter(chat => chat.id !== chatId);
+    setSidebarChats(updatedChats);
+    
+    if (selectedChat === chatId) {
+      setSelectedChat(updatedChats.length > 0 ? updatedChats[0].id : null);
+      setMessages([]);
+    }
+  };
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
   return (
     <div className="flex h-screen bg-gray-50 text-gray-900">
       {/* Sidebar */}
-      <Sidebar />
+      <Sidebar chats={sidebarChats} selectedChat={selectedChat} setSelectedChat={setSelectedChat} onDeleteChat={handleDeleteChat} />
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
@@ -120,9 +139,17 @@ const Chat = () => {
           <div className="flex items-center space-x-4">
             <Star className="w-5 h-5 text-gray-600 cursor-pointer hover:text-yellow-400 transition-colors" />
             <Settings className="w-5 h-5 text-gray-600 cursor-pointer hover:text-blue-500 transition-colors" />
-            <button className="px-4 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center space-x-2">
-              <X className="w-4 h-4" />
-              <span>Close</span>
+            <button 
+              onClick={() => setIsNewChatModalOpen(true)}
+              className="flex items-center p-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+            >
+              <span>Create New Chat</span>
+            </button>
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center p-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+            >
+              <User className="w-5 h-5 text-gray-600" />
             </button>
           </div>
         </div>
@@ -158,6 +185,7 @@ const Chat = () => {
               </div>
             </div>
           ))}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Message Input */}
@@ -180,6 +208,11 @@ const Chat = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal for User Profile */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      {/* Modal for New Chat */}
+      <NewChatModal isOpen={isNewChatModalOpen} onClose={() => setIsNewChatModalOpen(false)} />
     </div>
   );
 };
