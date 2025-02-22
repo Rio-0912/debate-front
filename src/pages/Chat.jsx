@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Clock, Star, Settings, X, Paperclip, Send, Bot, User } from 'lucide-react';
+import { Clock, Star, Settings, X, Paperclip, Send, Bot, User, Mic, StopCircle } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import Modal from '../components/Modal';
 import NewChatModal from '../components/NewChatModal';
@@ -97,19 +97,74 @@ const Chat = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const messagesEndRef = useRef(null);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
 
-  const handleSendMessage = () => {
-    if (newMessage.trim()) {
-      const newMsg = {
-        id: messages.length + 1,
-        content: newMessage,
-        time: 'now',
-        type: 'sent',
-        seen: false
-      };
-      setMessages([...messages, newMsg]);
-      setNewMessage('');
+  useEffect(() => {
+    // Initialize speech recognition
+    recognitionRef.current = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognitionRef.current.interimResults = true;
+    recognitionRef.current.lang = 'en-US';
+
+    recognitionRef.current.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map(result => result[0])
+        .map(result => result.transcript)
+        .join('');
+
+      if (event.results[0].isFinal) {
+        handleSendMessage(transcript); // Send the recognized speech as a message
+      }
+    };
+
+    recognitionRef.current.onend = () => {
+      setIsListening(false);
+    };
+
+    return () => {
+      recognitionRef.current = null; // Clean up on unmount
+    };
+  }, []);
+
+  const handleSendMessage = (content) => {
+    const newMsg = {
+      id: messages.length + 1,
+      content,
+      time: 'now',
+      type: 'sent',
+      seen: false
+    };
+    setMessages([...messages, newMsg]);
+    respondToUser(content); // Respond to the user's message
+    setNewMessage('')
+  };
+
+  const respondToUser = (userMessage) => {
+    // Here you can implement logic to generate a response based on userMessage
+    const botResponse = `You said: ${userMessage}. `;
+    const newMsg = {
+      id: messages.length + 2,
+      content: botResponse,
+      time: 'now',
+      type: 'received',
+      seen: true
+    };
+    setMessages(prevMessages => [...prevMessages, newMsg]);
+    speak(botResponse); // Speak the bot's response
+  };
+
+  const speak = (text) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      recognitionRef.current.start();
     }
+    setIsListening(!isListening);
   };
 
   const handleDeleteChat = (chatId) => {
@@ -150,6 +205,12 @@ const Chat = () => {
               className="flex items-center p-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
             >
               <User className="w-5 h-5 text-gray-600" />
+            </button>
+            <button 
+              onClick={toggleListening}
+              className={`flex items-center p-2 rounded-lg transition-colors ${isListening ? 'bg-red-200' : 'bg-gray-200'} hover:bg-gray-300`}
+            >
+              {isListening ? <StopCircle className="w-5 h-5 text-red-600" /> : <Mic className="w-5 h-5 text-gray-600" />}
             </button>
           </div>
         </div>
@@ -195,12 +256,12 @@ const Chat = () => {
               type="text"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(newMessage)}
               placeholder="Type your message..."
               className="flex-1 p-2 rounded-xl border border-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
-              onClick={handleSendMessage}
+              onClick={() => handleSendMessage(newMessage)}
               className="p-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600 transition-colors"
             >
               <Send className="w-5 h-5" />
