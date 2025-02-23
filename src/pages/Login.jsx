@@ -49,8 +49,13 @@ const Login = () => {
             const url = isSignup ?
                 backend + '/api/auth/signup' :
                 backend + '/api/auth/login';
-
-            const res = await axios.post(url, formData, {
+            const data = {
+                email: formData.email,
+                password: formData.password,
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+            }
+            const res = await axios.post(url, data, {
                 withCredentials: true
             });
 
