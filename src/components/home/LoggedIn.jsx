@@ -41,53 +41,53 @@ import { useAuth } from "../../context/AuthContext";
 
 const darkTheme = createTheme({
     palette: {
-        mode: "dark",
+        mode: "light",
         primary: {
-            main: "#0a6fc2", // Brighter blue for better visibility
-            light: "#64B5F6",
-            dark: "#1976D2"
+            main: "#D3C5E5",
+            light: "#E2D8EE",
+            dark: "#B6A3C9"
         },
         secondary: {
-            main: "#81D4FA", // Lighter blue for contrast
-            light: "#B3E5FC",
-            dark: "#4FC3F7"
+            main: "#D3C5E5",
+            light: "#E2D8EE",
+            dark: "#B6A3C9"
         },
         background: {
-            default: "#0D1B2A", // Darker navy blue for main background
-            paper: " #0861aa", // Slightly lighter navy for contrast
+            default: "rgba(211, 197, 229, 0.3)", // This is equivalent to bg-[#D3C5E5]/30
+            paper: "rgba(211, 197, 229, 0.3)",
         },
         text: {
-            primary: "#E3F2FD",
-            secondary: "#B3E5FC"
+            primary: "#374151", // text-gray-700
+            secondary: "#374151"
         },
         action: {
-            active: "#64B5F6",
-            hover: "rgba(33, 150, 243, 0.08)",
-            selected: "rgba(33, 150, 243, 0.16)",
+            active: "#D3C5E5",
+            hover: "rgba(211, 197, 229, 0.08)",
+            selected: "rgba(211, 197, 229, 0.16)",
         }
     },
     typography: {
         fontFamily: "'Inter', sans-serif",
         h1: {
             fontWeight: 900,
-            color: "#E3F2FD",
+            color: "#374151",
         },
         h2: {
             fontWeight: 800,
-            color: "#E3F2FD",
+            color: "#374151",
         },
         h4: {
             fontWeight: 700,
-            color: "#E3F2FD",
+            color: "#374151",
         },
         h6: {
-            color: "#E3F2FD",
+            color: "#374151",
         },
         body1: {
-            color: "#E3F2FD",
+            color: "#374151",
         },
         caption: {
-            color: "#B3E5FC",
+            color: "#374151",
         }
     },
     components: {
@@ -96,9 +96,10 @@ const darkTheme = createTheme({
                 root: {
                     borderRadius: 28,
                     textTransform: "none",
-                    backgroundColor: "#2196F3",
+                    backgroundColor: "#D3C5E5",
+                    color: "#374151",
                     "&:hover": {
-                        backgroundColor: "#1976D2",
+                        backgroundColor: "#B6A3C9",
                     },
                 },
             },
@@ -107,14 +108,14 @@ const darkTheme = createTheme({
             styleOverrides: {
                 root: {
                     backgroundImage: "none",
-                    backgroundColor: "#1B2B3A",
+                    backgroundColor: "rgba(211, 197, 229, 0.3)",
                 },
             },
         },
         MuiDrawer: {
             styleOverrides: {
                 paper: {
-                    backgroundColor: "#0D1B2A",
+                    backgroundColor: "rgba(211, 197, 229, 0.3)",
                 }
             }
         },
@@ -122,9 +123,9 @@ const darkTheme = createTheme({
             styleOverrides: {
                 root: {
                     '& .MuiOutlinedInput-root': {
-                        backgroundColor: "#1B2B3A",
+                        backgroundColor: "rgba(211, 197, 229, 0.3)",
                         '&:hover fieldset': {
-                            borderColor: "#64B5F6",
+                            borderColor: "#D3C5E5",
                         },
                     },
                 }
@@ -134,9 +135,9 @@ const darkTheme = createTheme({
             styleOverrides: {
                 root: {
                     '&.Mui-selected': {
-                        backgroundColor: "rgba(33, 150, 243, 0.16)",
+                        backgroundColor: "rgba(211, 197, 229, 0.16)",
                         '&:hover': {
-                            backgroundColor: "rgba(33, 150, 243, 0.24)",
+                            backgroundColor: "rgba(211, 197, 229, 0.24)",
                         },
                     },
                 }

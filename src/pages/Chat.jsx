@@ -235,7 +235,7 @@ const Chat = () => {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Chat Header */}
-        <div className="p-4 border-b border-[#D3C5E5] flex justify-between items-center bg-white">
+        <div className="p-4 border-b border-[#bg-gray-50] flex justify-between items-center bg-white">
           <h2 className="font-medium text-gray-800">Luis Easton</h2>
           <div className="flex items-center space-x-4">
             <Star className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors" />

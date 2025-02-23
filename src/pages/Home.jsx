@@ -4,6 +4,7 @@ import LoggedIn from "../components/home/LoggedIn";
 import { Navigate } from "react-router";
 import NotLoggedIn from "../components/home/NotLoggedIn";
 
+
 const Home = () => {
     const { user, loading } = useAuth();
 

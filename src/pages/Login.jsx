@@ -1,686 +1,178 @@
 import React, { useState } from 'react';
-import {
-    Box,
-    Card,
-    CardContent,
-    Tabs,
-    Tab,
-    TextField,
-    Button,
-    Typography,
-    InputAdornment,
-    IconButton,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Alert,
-    Snackbar
-} from '@mui/material';
-import {
-    Email,
-    Lock,
-    Person,
-    Visibility,
-    VisibilityOff,
-    Phone,
-    Cake,
-    Wc
-} from '@mui/icons-material';
-import background from '../assets/imgs/background.jpg';
-import axios from 'axios';
 import { useNavigate } from 'react-router';
-import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
+import Mail from '@mui/icons-material/Mail';
+import Lock from '@mui/icons-material/Lock';
+import Person from '@mui/icons-material/Person';
+import { MailLock, Person2 } from '@mui/icons-material';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
-
-const Login = ({ tabNumber }) => {
+const Login = () => {
     const navigate = useNavigate();
-    const { login } = useAuth();
-
-    const [tab, setTab] = useState(tabNumber || 0);
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-
-    const [loginData, setLoginData] = useState({
-        email: '',
-        password: ''
-    });
-
-    const [signupData, setSignupData] = useState({
-        firstName: '',
-        lastName: '',
+    const [isSignup, setIsSignup] = useState(false);
+    const [formData, setFormData] = useState({
         email: '',
         password: '',
+        firstName: '',
+        lastName: '',
         confirmPassword: '',
-        age: 0,
-        gender: '',
-        phone: 0,
     });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
-    const handleChange = (event, newValue) => {
-        setTab(newValue);
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSnackbarClose = () => {
-        setSnackbar({ ...snackbar, open: false });
+    const validateForm = () => {
+        if (isSignup && formData.password !== formData.confirmPassword) {
+            setError('Passwords do not match');
+            return false;
+        }
+        if (!/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(formData.email)) {
+            setError('Invalid email format');
+            return false;
+        }
+        return true;
     };
 
-    const handleLoginSubmit = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!validateForm()) return;
+        
+        setLoading(true);
         try {
-            const res = await axios.post('http://localhost:8000/api/auth/login', loginData, { withCredentials: true });
-            setSnackbar({ open: true, message: 'Login successful!', severity: 'success' });
-            login(res.data.user);
+            const url = isSignup ? 
+                'http://localhost:8000/api/auth/signup' : 
+                'http://localhost:8000/api/auth/login';
+            
+            const res = await axios.post(url, formData, { 
+                withCredentials: true 
+            });
+            
+            localStorage.setItem('authToken', res.data.token);
             navigate('/home');
         } catch (err) {
-            setSnackbar({ open: true, message: 'Login failed. Check credentials.', severity: 'error' });
-        }
-    };
-
-    const handleSignupSubmit = async (e) => {
-        e.preventDefault();
-        if (signupData.password !== signupData.confirmPassword) {
-            setSnackbar({ open: true, message: 'Passwords do not match!', severity: 'error' });
-            return;
-        }
-        try {
-            await axios.post('http://localhost:8000/api/auth/signup', {
-                firstName: signupData.firstName,
-                lastName: signupData.lastName,
-                email: signupData.email,
-                password: signupData.password,
-                age: signupData.age,
-                gender: signupData.gender,
-                phone: signupData.phone,
-            }, { withCredentials: true });
-            setSnackbar({ open: true, message: 'Signup successful! You can now login.', severity: 'success' });
-            setSignupData({
-                firstName: '',
-                lastName: '',
-                email: '',
-                password: '',
-                confirmPassword: '',
-                age: 0,
-                gender: '',
-                phone: 0,
-            });
-            setTab(0);
-        } catch (err) {
-            if (err.response.status === 409) {
-                setSnackbar({ open: true, message: 'Email already exists!', severity: 'error' });
-            } else {
-                setSnackbar({ open: true, message: 'Signup failed. Please try again.', severity: 'error' });
-            }
+            setError(err.response?.data?.message || 'Authentication failed');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <Box sx={{
-            minHeight: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 2,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            position: 'relative',
-            backgroundColor: '#0A192F',
-            '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(10, 25, 47, 0.85)',
-                zIndex: 1
-            }
-        }}>
-            <Card sx={{
-                width: { xs: '90%', sm: 800 },
-                zIndex: 2,
-                minWidth: 320,
-                maxWidth: 500,
-                mt: 8,
-                backgroundColor: '#102A43',
-                backdropFilter: 'blur(10px)',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-                borderRadius: 4,
-                paddingY: { xs: 2, sm: 3 },
-                border: '1px solid rgba(179, 229, 252, 0.1)'
-            }}>
-                <CardContent sx={{
-                    p: { xs: 2, sm: 3 },
-                    maxHeight: { xs: '75vh', sm: '80vh' },
-                    overflowY: 'auto',
-                    '&::-webkit-scrollbar': {
-                        width: '8px',
-                    },
-                    '&::-webkit-scrollbar-track': {
-                        background: '#0A192F',
-                    },
-                    '&::-webkit-scrollbar-thumb': {
-                        background: '#1565C0',
-                        borderRadius: '4px',
-                    }
-                }}>
-                    <Typography
-                        variant="h4"
-                        align="center"
-                        sx={{
-                            fontWeight: 700,
-                            mb: 2,
-                            fontFamily: 'Inter, sans-serif',
-                            color: '#B3E5FC'
-                        }}
-                    >
-                        DebateHub
-                    </Typography>
-                    <Tabs
-                        value={tab}
-                        onChange={handleChange}
-                        variant="fullWidth"
-                        sx={{
-                            mb: 3,
-                            '& .MuiTabs-indicator': {
-                                backgroundColor: '#1565C0',
-                                height: 3
-                            },
-                            '& .MuiTab-root': {
-                                fontWeight: 600,
-                                fontSize: '1rem',
-                                textTransform: 'none',
-                                color: '#E3F2FD',
-                                '&.Mui-selected': {
-                                    color: '#1E88E5'
-                                }
-                            }
-                        }}
-                    >
-                        <Tab label="Login" />
-                        <Tab label="Sign Up" />
-                    </Tabs>
-                    {tab === 0 && (
-                        <Box component="form" onSubmit={handleLoginSubmit} sx={{ mt: 2 }}>
-                            <Typography variant="h5" align="center" gutterBottom sx={{ color: '#BBDEFB' }}>
-                                Welcome Back
-                            </Typography>
-                            <Typography variant="body2" align="center" sx={{ mb: 3, color: '#E3F2FD' }}>
-                                Please enter your details
-                            </Typography>
-                            <TextField
-                                fullWidth
-                                type="email"
-                                label="Email"
-                                margin="normal"
-                                required
-                                value={loginData.email}
-                                onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <Email sx={{ color: '#1E88E5' }} />
-                                        </InputAdornment>
-                                    ),
-                                }}
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        '& fieldset': {
-                                            borderColor: 'hsla(199, 92.40%, 84.50%, 0.20)',
-                                        },
-                                        '&:hover fieldset': {
-                                            borderColor: '#1565C0',
-                                        },
-                                    },
-                                    '& .MuiInputLabel-root': {
-                                        color: '#E3F2FD',
-                                    },
-                                    '& .MuiInputBase-input': {
-                                        color: '#E3F2FD',
-                                    },
-                                    '& input:-webkit-autofill': {
-                                        WebkitBoxShadow: '0 0 0px 1000px #112A43 inset',
-                                        WebkitTextFillColor: '#E3F2FD',
-                                    },
-                                }}
-                            />
-                            <TextField
-                                fullWidth
-                                type={showPassword ? 'text' : 'password'}
-                                label="Password"
-                                margin="normal"
-                                required
-                                value={loginData.password}
-                                onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <Lock sx={{ color: '#1E88E5' }} />
-                                        </InputAdornment>
-                                    ),
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                edge="end"
-                                                sx={{ color: '#1E88E5' }}
-                                            >
-                                                {showPassword ? <VisibilityOff /> : <Visibility />}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
-                                }}
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        '& fieldset': {
-                                            borderColor: 'hsla(199, 92.40%, 84.50%, 0.20)',
-                                        },
-                                        '&:hover fieldset': {
-                                            borderColor: '#1565C0',
-                                        },
-                                    },
-                                    '& .MuiInputLabel-root': {
-                                        color: '#E3F2FD',
-                                    },
-                                    '& .MuiInputBase-input': {
-                                        color: '#E3F2FD',
-                                    },
-                                    '& input:-webkit-autofill': {
-                                        WebkitBoxShadow: '0 0 0px 1000px #112A43 inset',
-                                        WebkitTextFillColor: '#E3F2FD',
-                                    },
-                                }}
-                            />
-                            <Button
-                                type="submit"
-                                fullWidth
-                                variant="contained"
-                                size="large"
-                                sx={{
-                                    mt: 3,
-                                    backgroundColor: '#1565C0',
-                                    '&:hover': {
-                                        backgroundColor: '#0D47A1',
-                                    }
-                                }}
-                            >
-                                Login
-                            </Button>
-                        </Box>
+        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#0f0f0] to-[#d3c5e57a]">
+            <div className="relative bg-red backdrop-blur-lg p-8 rounded-3xl shadow-2xl w-96 transition-all duration-500 hover:shadow-xl">
+                <div className="absolute inset-0 bg-[#b093d5]/50 rounded-3xl backdrop-blur-sm" />
+                
+                <div className="relative z-10">
+                    <h2 className="text-4xl font-bold text-purple-800 text-center mb-8 transform hover:scale-105 transition-transform">
+                        {isSignup ? 'Create Account' : 'Welcome Back'}
+                        <div className="w-16 h-1 bg-white rounded-full mx-auto mt-2" />
+                    </h2>
+
+                    {error && (
+                        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+                            {error}
+                        </div>
                     )}
 
-                    {tab === 1 && (
-                        <Box component="form" onSubmit={handleSignupSubmit} sx={{ mt: 2 }}>
-                            <Typography variant="h5" align="center" gutterBottom sx={{ color: '#BBDEFB' }}>
-                                Create Account
-                            </Typography>
-                            <Typography variant="body2" align="center" sx={{ mb: 3, color: '#E3F2FD' }}>
-                                Please fill in your information
-                            </Typography>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {isSignup && (
+                            <div className="flex gap-4">
+                                <div className="relative flex-1">
+                                    <Person2 className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-800/80" />
+                                    <input
+                                        type="text"
+                                        name="firstName"
+                                        placeholder="First Name"
+                                        className="w-full pl-12 pr-4 py-3 bg-white/20 border border-white/30 rounded-xl text-purple-800 placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50"
+                                        value={formData.firstName}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </div>
+                                <div className="relative flex-1">
+                                    <Person className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-800/80" />
+                                    <input
+                                        type="text"
+                                        name="lastName"
+                                        placeholder="Last Name"
+                                        className="w-full pl-12 pr-4 py-3 bg-white/20 border border-white/30 rounded-xl text-purple-800 placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50"
+                                        value={formData.lastName}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                        )}
 
-                            <Box sx={{ display: 'flex', gap: 2 }}>
-                                <TextField
-                                    fullWidth
-                                    label="First Name"
-                                    margin="normal"
-                                    required
-                                    value={signupData.firstName}
-                                    onChange={(e) => setSignupData({ ...signupData, firstName: e.target.value })}
-                                    InputProps={{
-                                        startAdornment: (
-                                            <InputAdornment position="start">
-                                                <Person sx={{ color: '#1E88E5' }} />
-                                            </InputAdornment>
-                                        ),
-                                    }}
-                                    sx={{
-                                        '& .MuiOutlinedInput-root': {
-                                            '& fieldset': {
-                                                borderColor: 'hsla(199, 92.40%, 84.50%, 0.20)',
-                                            },
-                                            '&:hover fieldset': {
-                                                borderColor: '#1565C0',
-                                            },
-                                        },
-                                        '& .MuiInputLabel-root': {
-                                            color: '#E3F2FD',
-                                        },
-                                        '& .MuiInputBase-input': {
-                                            color: '#E3F2FD',
-                                        },
-                                        '& input:-webkit-autofill': {
-                                            WebkitBoxShadow: '0 0 0px 1000px #112A43 inset',
-                                            WebkitTextFillColor: '#E3F2FD',
-                                        },
-                                    }}
-                                />
-                                <TextField
-                                    fullWidth
-                                    label="Last Name"
-                                    margin="normal"
-                                    required
-                                    value={signupData.lastName}
-                                    onChange={(e) => setSignupData({ ...signupData, lastName: e.target.value })}
-                                    InputProps={{
-                                        startAdornment: (
-                                            <InputAdornment position="start">
-                                                <Person sx={{ color: '#1E88E5' }} />
-                                            </InputAdornment>
-                                        ),
-                                    }}
-                                    sx={{
-                                        '& .MuiOutlinedInput-root': {
-                                            '& fieldset': {
-                                                borderColor: 'hsla(199, 92.40%, 84.50%, 0.20)',
-                                            },
-                                            '&:hover fieldset': {
-                                                borderColor: '#1565C0',
-                                            },
-                                        },
-                                        '& .MuiInputLabel-root': {
-                                            color: '#E3F2FD',
-                                        },
-                                        '& .MuiInputBase-input': {
-                                            color: '#E3F2FD',
-                                        },
-                                        '& input:-webkit-autofill': {
-                                            WebkitBoxShadow: '0 0 0px 1000px #112A43 inset',
-                                            WebkitTextFillColor: '#E3F2FD',
-                                        },
-                                    }}
-                                />
-                            </Box>
-
-                            {/* Remaining fields with consistent dark theme styling */}
-                            <TextField
-                                fullWidth
+                        <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-800/80" />
+                            <input
                                 type="email"
-                                label="Email"
-                                margin="normal"
+                                name="email"
+                                placeholder="Email"
+                                className="w-full pl-12 pr-4 py-3 bg-white/20 border border-white/30 rounded-xl text-purple-800 placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50"
+                                value={formData.email}
+                                onChange={handleChange}
                                 required
-                                value={signupData.email}
-                                onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <Email sx={{ color: '#1E88E5' }} />
-                                        </InputAdornment>
-                                    ),
-                                }}
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        '& fieldset': {
-                                            borderColor: 'hsla(199, 92.40%, 84.50%, 0.20)',
-                                        },
-                                        '&:hover fieldset': {
-                                            borderColor: '#1565C0',
-                                        },
-                                    },
-                                    '& .MuiInputLabel-root': {
-                                        color: '#E3F2FD',
-                                    },
-                                    '& .MuiInputBase-input': {
-                                        color: '#E3F2FD',
-                                    },
-                                    '& input:-webkit-autofill': {
-                                        WebkitBoxShadow: '0 0 0px 1000px #112A43 inset',
-                                        WebkitTextFillColor: '#E3F2FD',
-                                    },
-                                }}
                             />
+                        </div>
 
-                            <TextField
-                                fullWidth
-                                type={showPassword ? 'text' : 'password'}
-                                label="Password"
-                                margin="normal"
+                        <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-800/80" />
+                            <input
+                                type="password"
+                                name="password"
+                                placeholder="Password"
+                                className="w-full pl-12 pr-4 py-3 bg-white/20 border border-white/30 rounded-xl text-purple-800 placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50"
+                                value={formData.password}
+                                onChange={handleChange}
                                 required
-                                value={signupData.password}
-                                onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <Lock sx={{ color: '#1E88E5' }} />
-                                        </InputAdornment>
-                                    ),
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                edge="end"
-                                                sx={{ color: '#1E88E5' }}
-                                            >
-                                                {showPassword ? <VisibilityOff /> : <Visibility />}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
-                                }}
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        '& fieldset': {
-                                            borderColor: 'hsla(199, 92.40%, 84.50%, 0.20)',
-                                        },
-                                        '&:hover fieldset': {
-                                            borderColor: '#1565C0',
-                                        },
-                                    },
-                                    '& .MuiInputLabel-root': {
-                                        color: '#E3F2FD',
-                                    },
-                                    '& .MuiInputBase-input': {
-                                        color: '#E3F2FD',
-                                    },
-                                    '& input:-webkit-autofill': {
-                                        WebkitBoxShadow: '0 0 0px 1000px #112A43 inset',
-                                        WebkitTextFillColor: '#E3F2FD',
-                                    },
-                                }}
                             />
-                            <TextField
-                                fullWidth
-                                type={showConfirmPassword ? 'text' : 'password'}
-                                label="Confirm Password"
-                                margin="normal"
-                                required
-                                value={signupData.confirmPassword}
-                                onChange={(e) => setSignupData({ ...signupData, confirmPassword: e.target.value })}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <Lock sx={{ color: '#1E88E5' }} />
-                                        </InputAdornment>
-                                    ),
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                                edge="end"
-                                                sx={{ color: '#1E88E5' }}
-                                            >
-                                                {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
-                                }}
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        '& fieldset': {
-                                            borderColor: 'hsla(199, 92.40%, 84.50%, 0.20)',
-                                        },
-                                        '&:hover fieldset': {
-                                            borderColor: '#1565C0',
-                                        },
-                                    },
-                                    '& .MuiInputLabel-root': {
-                                        color: '#E3F2FD',
-                                    },
-                                    '& .MuiInputBase-input': {
-                                        color: '#E3F2FD',
-                                    },
-                                    '& input:-webkit-autofill': {
-                                        WebkitBoxShadow: '0 0 0px 1000px #112A43 inset',
-                                        WebkitTextFillColor: '#E3F2FD',
-                                    },
-                                }}
-                            />
+                        </div>
 
-                            {/* Age, Gender, Phone Fields */}
-                            <TextField
-                                fullWidth
-                                type="number"
-                                label="Age"
-                                margin="normal"
-                                required
-                                value={signupData.age}
-                                onChange={(e) => setSignupData({ ...signupData, age: parseInt(e.target.value) })}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start" sx={{ color: '#1E88E5' }}>
-                                            <Cake />
-                                        </InputAdornment>
-                                    ),
-                                }}
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        '& fieldset': {
-                                            borderColor: 'hsla(199, 92.40%, 84.50%, 0.20)',
-                                        },
-                                        '&:hover fieldset': {
-                                            borderColor: '#1565C0',
-                                        },
-                                    },
-                                    '& .MuiInputLabel-root': {
-                                        color: '#E3F2FD',
-                                    },
-                                    '& .MuiInputBase-input': {
-                                        color: '#E3F2FD',
-                                    },
-                                    '& input:-webkit-autofill': {
-                                        WebkitBoxShadow: '0 0 0px 1000px #112A43 inset',
-                                        WebkitTextFillColor: '#E3F2FD',
-                                    },
-                                }}
-                            />
+                        {isSignup && (
+                            <div className="relative">
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-800/80" />
+                                <input
+                                    type="password"
+                                    name="confirmPassword"
+                                    placeholder="Confirm Password"
+                                    className="w-full pl-12 pr-4 py-3 bg-white/20 border border-white/30 rounded-xl text-purple-800 placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50"
+                                    value={formData.confirmPassword}
+                                    onChange={handleChange}
+                                    required
+                                />
+                            </div>
+                        )}
 
-                            <FormControl
-                                fullWidth
-                                margin="normal"
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        '& fieldset': { borderColor: 'rgba(179, 229, 252, 0.2)' },
-                                        '&:hover fieldset': { borderColor: '#1565C0' },
-                                    },
-                                    '& .MuiInputLabel-root': { color: '#E3F2FD' },
-                                    '& .MuiSelect-select': { color: '#E3F2FD' }
-                                }}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start" sx={{ color: '#1E88E5' }}>
-                                            <Phone />
-                                        </InputAdornment>
-                                    ),
-                                }}
-                            >
-                                <InputLabel sx={{ color: '#E3F2FD' }}>Gender</InputLabel>
-                                <Select
-                                    value={signupData.gender}
-                                    onChange={(e) => setSignupData({ ...signupData, gender: e.target.value })}
-                                    label="Gender"
-                                    startAdornment={
-                                        <InputAdornment position="start" sx={{ color: '#1E88E5' }}>
-                                            <Wc />
-                                        </InputAdornment>
-                                    }
-                                    MenuProps={{
-                                        PaperProps: {
-                                            sx: {
-                                                backgroundColor: '#102A43',
-                                                color: '#E3F2FD',
-                                                '& .MuiMenuItem-root': {
-                                                    '&:hover': { backgroundColor: '#1E88E5' }
-                                                }
-                                            }
-                                        }
-                                    }}
-                                >
-                                    <MenuItem value="Male">Male</MenuItem>
-                                    <MenuItem value="Female">Female</MenuItem>
-                                    <MenuItem value="Other">Other</MenuItem>
-                                    <MenuItem value="Rather Not Say">Rather Not Say</MenuItem>
-                                </Select>
-                            </FormControl>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full flex items-center justify-center gap-2 p-4 bg-white text-purple-600 font-bold rounded-xl transition-all duration-300 hover:bg-opacity-90 hover:gap-3 hover:shadow-lg disabled:opacity-50"
+                        >
+                            {loading ? 'Processing...' : isSignup ? 'Get Started' : 'Sign In'}
+                            {!loading && <ArrowForwardIcon className="inline-block" />}
+                        </button>
+                    </form>
 
-
-                            <TextField
-                                fullWidth
-                                type="tel"
-                                label="Phone"
-                                margin="normal"
-                                required
-                                value={signupData.phone}
-                                onChange={(e) => setSignupData({ ...signupData, phone: parseInt(e.target.value) })}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start" sx={{ color: '#1E88E5' }}>
-                                            <Phone />
-                                        </InputAdornment>
-                                    ),
-                                }}
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        '& fieldset': {
-                                            borderColor: 'hsla(199, 92.40%, 84.50%, 0.20)',
-                                        },
-                                        '&:hover fieldset': {
-                                            borderColor: '#1565C0',
-                                        },
-                                    },
-                                    '& .MuiInputLabel-root': {
-                                        color: '#E3F2FD',
-                                    },
-                                    '& .MuiInputBase-input': {
-                                        color: '#E3F2FD',
-                                    },
-                                    '& input:-webkit-autofill': {
-                                        WebkitBoxShadow: '0 0 0px 1000px #112A43 inset',
-                                        WebkitTextFillColor: '#E3F2FD',
-                                    },
-                                }}
-                            />
-
-                            <Button
-                                type="submit"
-                                fullWidth
-                                variant="contained"
-                                size="large"
-                                sx={{
-                                    mt: 3,
-                                    backgroundColor: '#1565C0',
-                                    '&:hover': {
-                                        backgroundColor: '#0D47A1',
-                                    }
-                                }}
-                            >
-                                Sign Up
-                            </Button>
-                        </Box>
-                    )}
-                </CardContent>
-            </Card>
-
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={4000}
-                onClose={handleSnackbarClose}
-                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-            >
-                <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%' }}>
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
-        </Box>
+                    <p className="text-center mt-6 text-purple-800/90">
+                        {isSignup ? 'Already have an account?' : "New here?"}
+                        <button
+                            onClick={() => {
+                                setIsSignup(!isSignup);
+                                setError('');
+                            }}
+                            className="ml-2 font-semibold underline-offset-4 hover:underline hover:text-purple-800 transition-all"
+                        >
+                            {isSignup ? 'Sign In instead' : 'Create account'}
+                        </button>
+                    </p>
+                </div>
+            </div>
+        </div>
     );
 };
 
