@@ -3,10 +3,15 @@ import { Clock, Star, Settings, X, Paperclip, Send, Bot, User as UserIcon, Mic, 
 import Sidebar from '../components/Sidebar';
 import Modal from '../components/Modal';
 import NewChatModal from '../components/NewChatModal';
+import AudioRecorder from '../components/AudioRecorder';
 import axios from 'axios';
+
+import { backend } from '../assets/utils/constants';
+
 import { useAuth } from '../context/AuthContext';
 import { Logout } from '@mui/icons-material';
 import { io } from "socket.io-client";
+
 
 const Chat = () => {
   const { logout } = useAuth();
@@ -22,6 +27,24 @@ const Chat = () => {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioChunks, setAudioChunks] = useState([]);
   const recordingTimeoutRef = useRef(null);
+
+  
+
+  useEffect(() => {
+    const fetchDebates = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(`${backend}/api/debate/getAllDebates/`, {
+          headers: {
+            'token': `${token}` // Pass the token in the header
+          }
+        });
+
+        if (response.data.success) {
+          setSidebarChats(response.data.debates); // Set the fetched debates to sidebarChats state
+        } else {
+          console.error('Failed to fetch debates:', response.data.message);
+
   const [socket, setSocket] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef(null);
@@ -48,6 +71,7 @@ const Chat = () => {
       const response = await axios.get('http://localhost:8000/api/debate/getAllDebates/', {
         headers: {
           'token': `${token}`
+
         }
       });
 
@@ -198,8 +222,12 @@ const Chat = () => {
   const fetchChatDetails = async (chatId) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`http://localhost:8000/api/debate/getDebate/${chatId}`, {
-        headers: { 'token': token }
+
+      const response = await axios.get(`${backend}/api/debate/getDebate/${chatId}`, {
+        headers: {
+          'token': `${token}` // Pass the token in the header
+        }
+
       });
 
       if (response.data.success) {
@@ -266,7 +294,15 @@ const Chat = () => {
               onClick={() => setIsNewChatModalOpen(true)}
               className="flex items-center p-2 bg-[#D3C5E5] text-gray-800 rounded-lg hover:bg-[#D3C5E5]/90 transition-colors"
             >
-              Create New Chat
+
+              <UserIcon className="w-5 h-5" />
+            </button>
+            <button
+          className={`flex items-center p-2 rounded-lg transition-colors ${isListening ? 'bg-red-200' : 'bg-[#D3C5E5]'} hover:bg-[#D3C5E5]/90`}
+              // onClick={handleVoiceDebate}
+            >
+              <AudioRecorder/>
+
             </button>
           </div>
         </div>
@@ -329,6 +365,7 @@ const Chat = () => {
         </div>
       </div>
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+
       {isNewChatModalOpen && (
         <NewChatModal
           isOpen={isNewChatModalOpen}
