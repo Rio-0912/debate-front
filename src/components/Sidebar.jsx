@@ -1,73 +1,72 @@
-import React, { useEffect, useState } from 'react';
-import { Bot, Trash2 } from 'lucide-react';
-import axios from 'axios';
+import React from 'react';
+import { Clock, MessageSquare, Plus, Trash2 } from 'lucide-react';
 
-const Sidebar = ({ selectedChat, setSelectedChat, onDeleteChat, fetchChatDetails }) => {
-    const [chats, setChats] = useState([]);
-
-    useEffect(() => {
-        const fetchDebates = async () => {
-            try {
-                const token = localStorage.getItem("token");
-                const response = await axios.get('http://localhost:8000/api/debate/getAllDebates/', {
-                    headers: {
-                        'token': `${token}`
-                    }
-                });
-                
-                if (response.data.success) {
-                    setChats(response.data.debates);
-                } else {
-                    console.error('Failed to fetch debates:', response.data.message);
-                }
-            } catch (error) {
-                console.error('Error fetching debates:', error);
-            }
-        };
-
-        fetchDebates();
-    }, []);
+const Sidebar = ({ chats, selectedChat, setSelectedChat, onDeleteChat, fetchChatDetails }) => {
+    const handleChatClick = async (chatId) => {
+        setSelectedChat(chatId);
+        await fetchChatDetails(chatId);
+    };
 
     return (
-        <div className="w-80 border-r border-[#D3C5E5] bg-white shadow-md h-full overflow-y-auto">
-            <div className="p-4 border-b border-[#D3C5E5] flex items-center justify-between">
-                <h1 className="font-medium text-lg text-gray-700">Your Chats</h1>
+        <div className="w-80 bg-white border-r border-[#D3C5E5] flex flex-col h-full">
+            <div className="p-4 border-b border-[#D3C5E5]">
+                <h1 className="text-xl font-semibold text-gray-800">Debates</h1>
             </div>
 
-            {/* Sidebar Chat List */}
-            <div className="h-fit">
-                {chats.map((chat) => (
-                    <div 
-                        key={chat._id} 
-                        onClick={() => {
-                            setSelectedChat(chat._id);
-                            fetchChatDetails(chat._id);
-                        }}
-                        className={`p-4 cursor-pointer transition-colors duration-150
-                            ${selectedChat === chat._id ? 'bg-[#D3C5E5]/40' : 'hover:bg-[#D3C5E5]/20'} rounded-lg m-2 flex items-center justify-between`}
+            <div className="flex-1 overflow-y-auto">
+                {chats && chats.map((chat) => (
+                    <div
+                        key={chat._id}
+                        className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 border-b border-[#D3C5E5] ${selectedChat === chat._id ? 'bg-[#D3C5E5]/20' : ''
+                            }`}
+                        onClick={() => handleChatClick(chat._id)}
                     >
-                        <div className="flex items-center space-x-3">
-                            <div className={`w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 shadow-md`}>
-                                <Bot className="w-5 h-5" />
-                            </div>
+                        <div className="flex justify-between items-start">
                             <div className="flex-1">
-                                <div className="flex justify-between items-center">
-                                    <span className="font-medium text-gray-700">{chat.title}</span>
-                                    <span className="text-sm text-gray-600">{new Date(chat.createdAt).toLocaleString()}</span>
+                                <h3 className="font-medium text-gray-800 truncate">{chat.title}</h3>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <MessageSquare className="w-4 h-4 text-gray-500" />
+                                    <span className="text-sm text-gray-500">
+                                        {chat.stream.length ? chat.stream.length : 0} messages
+                                    </span>
                                 </div>
-                                <p className="text-sm text-gray-600 truncate">{chat.topic}</p>
                             </div>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDeleteChat(chat._id);
+                                }}
+                                className="p-1 hover:bg-red-50 rounded-full group"
+                            >
+                                <Trash2 className="w-4 h-4 text-gray-400 group-hover:text-red-500" />
+                            </button>
                         </div>
-                        <button 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteChat(chat._id);
-                            }}
-                            className="text-gray-600 hover:text-red-500 ml-4"
-                            aria-label="Delete chat"
-                        >
-                            <Trash2 className="w-5 h-5" />
-                        </button>
+
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            {chat.mood?.map((mood, index) => (
+                                <span
+                                    key={index}
+                                    className="px-2 py-1 text-xs rounded-full bg-[#D3C5E5]/30 text-gray-700"
+                                >
+                                    {mood}
+                                </span>
+                            ))}
+                            <span className={`px-2 py-1 text-xs rounded-full ${chat.aiInclination === 'For'
+                                ? 'bg-green-100 text-green-700'
+                                : chat.aiInclination === 'Against'
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}>
+                                {chat.aiInclination}
+                            </span>
+                        </div>
+
+                        <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
+                            <Clock className="w-3 h-3" />
+                            <span>
+                                {new Date(chat.updatedAt).toLocaleDateString()} {new Date(chat.updatedAt).toLocaleTimeString()}
+                            </span>
+                        </div>
                     </div>
                 ))}
             </div>

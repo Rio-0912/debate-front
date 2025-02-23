@@ -1,3 +1,3 @@
-const backend = "https://debate-backend.onrender.com";
+const backend = "http://localhost:8000";
 
 export { backend };

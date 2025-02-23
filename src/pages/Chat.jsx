@@ -4,8 +4,12 @@ import Sidebar from '../components/Sidebar';
 import Modal from '../components/Modal';
 import NewChatModal from '../components/NewChatModal';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import { Logout } from '@mui/icons-material';
+import { io } from "socket.io-client";
 
 const Chat = () => {
+  const { logout } = useAuth();
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
   const [sidebarChats, setSidebarChats] = useState([]);
@@ -18,281 +22,302 @@ const Chat = () => {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioChunks, setAudioChunks] = useState([]);
   const recordingTimeoutRef = useRef(null);
+  const [socket, setSocket] = useState(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef(null);
+  const globalSocket = useRef(null);
+  const messageContainerRef = useRef(null);
 
+  // Add new function to check if scroll is at bottom
+  const isScrolledToBottom = () => {
+    if (!messageContainerRef.current) return true;
+    const { scrollHeight, scrollTop, clientHeight } = messageContainerRef.current;
+    return Math.abs(scrollHeight - scrollTop - clientHeight) < 10;
+  };
 
-  useEffect(() => {
-    const fetchDebates = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await axios.get('http://localhost:8000/api/debate/getAllDebates/', {
-          headers: {
-            'token': `${token}` // Pass the token in the header
-          }
+  // Updated scroll function
+  const scrollToBottom = (force = false) => {
+    if (force || isScrolledToBottom()) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const fetchDebates = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get('http://localhost:8000/api/debate/getAllDebates/', {
+        headers: {
+          'token': `${token}`
+        }
+      });
+
+      if (response.data.success) {
+        const sortedDebates = response.data.debates.sort((a, b) => {
+          const timestampA = a.timestamp || a.createdAt || 0;
+          const timestampB = b.timestamp || b.createdAt || 0;
+          return new Date(timestampB) - new Date(timestampA);
         });
 
-        if (response.data.success) {
-          setSidebarChats(response.data.debates); // Set the fetched debates to sidebarChats state
-        } else {
-          console.error('Failed to fetch debates:', response.data.message);
+        setSidebarChats(sortedDebates);
+
+        if (sortedDebates.length > 0 && !selectedChat) {
+          const firstChatId = sortedDebates[0]._id;
+          setSelectedChat(firstChatId);
+          fetchChatDetails(firstChatId);
         }
-      } catch (error) {
-        console.error('Error fetching debates:', error);
       }
-    };
-
-    fetchDebates();
-  }, []); // Fetch debates on component mount
-
-  useEffect(() => {
-    if (selectedChat) {
-      const chat = sidebarChats.find(chat => chat._id === selectedChat);
-      if (chat) {
-        setMessages(chat.stream); // Set messages based on the selected chat's stream
-      }
+    } catch (error) {
+      console.error('Error fetching debates:', error);
     }
-  }, [selectedChat, sidebarChats]); // Update messages when selectedChat or sidebarChats change
+  };
 
   useEffect(() => {
-    recognitionRef.current = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognitionRef.current.interimResults = true;
-    recognitionRef.current.lang = 'en-US';
-
-    recognitionRef.current.onresult = (event) => {
-      const transcript = Array.from(event.results)
-        .map(result => result[0])
-        .map(result => result.transcript)
-        .join('');
-
-      if (event.results[0].isFinal) {
-        handleSendMessage(transcript);
+    const token = localStorage.getItem("token");
+    const newGlobalSocket = io("ws://localhost:8000", {
+      withCredentials: true,
+      extraHeaders: {
+        'token': token
       }
-    };
+    });
 
-    recognitionRef.current.onend = () => {
-      setIsListening(false);
-    };
+    newGlobalSocket.on("connect", () => {
+      console.log("Connected to global socket");
+    });
+
+    newGlobalSocket.on("chatCreated", () => {
+      console.log("New chat created, refreshing list");
+      fetchDebates();
+    });
+
+    newGlobalSocket.on("chatUpdated", () => {
+      console.log("Chat updated, refreshing list");
+      fetchDebates();
+    });
+
+    newGlobalSocket.on("chatDeleted", () => {
+      console.log("Chat deleted, refreshing list");
+      fetchDebates();
+    });
+
+    globalSocket.current = newGlobalSocket;
+    fetchDebates();
 
     return () => {
-      recognitionRef.current = null;
+      if (globalSocket.current) {
+        globalSocket.current.disconnect();
+      }
     };
   }, []);
 
+  useEffect(() => {
+    if (selectedChat) {
+      const token = localStorage.getItem("token");
+      const newSocket = io("ws://localhost:8000", {
+        withCredentials: true,
+        extraHeaders: {
+          'token': token
+        }
+      });
+
+      newSocket.emit('join', selectedChat);
+
+      newSocket.on("messages", (updatedStream) => {
+        setMessages(updatedStream);
+        // Scroll to bottom after messages update
+        setTimeout(() => scrollToBottom(), 100);
+      });
+
+      newSocket.on("typing", () => {
+        setIsTyping(true);
+      });
+
+      newSocket.on("stopTyping", () => {
+        setIsTyping(false);
+      });
+
+      newSocket.on("error", (error) => {
+        console.error("Socket error:", error);
+      });
+
+      setSocket(newSocket);
+
+      return () => {
+        newSocket.disconnect();
+      };
+    }
+  }, [selectedChat]);
+
+  // Add effect to scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom(true);
+  }, [messages]);
+
+  const handleTyping = (e) => {
+    setNewMessage(e.target.value);
+
+    if (!socket || !selectedChat) return;
+
+    if (!isTyping) {
+      setIsTyping(true);
+      socket.emit('typing', { debateId: selectedChat });
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+      socket.emit('stopTyping', { debateId: selectedChat });
+    }, 1000);
+  };
+
   const handleSendMessage = (content) => {
-    const newMsg = {
-      id: messages.length + 1,
-      content,
-      time: 'now',
-      type: 'sent',
-      seen: false
-    };
-    setMessages([...messages, newMsg]);
-    respondToUser(content);
-    setNewMessage('');
-  };
+    if (!socket || !selectedChat || !content.trim()) return;
+    const response = axios.get(`http://localhost:8000/api/debate/getDebate/${selectedChat}`, {
+      headers: { 'token': localStorage.getItem('token') }
+    }).then(response => {
+      const message = {
+        debateId: selectedChat,
+        msg: content.replace(/\n/g, "<br>"),
+        mood: response.data.debate.mood,
+        topic: response.data.debate.topic,
+        stand: response.data.debate.aiInclination
+      };
+      console.log(message);
+      socket.emit("debateMessage", { message });
+      setNewMessage('');
+      scrollToBottom(true);
 
-  const respondToUser = (userMessage) => {
-    const botResponse = `You said: ${userMessage}. `;
-    const newMsg = {
-      id: messages.length + 2,
-      content: botResponse,
-      time: 'now',
-      type: 'received',
-      seen: true
-    };
-    setMessages(prevMessages => [...prevMessages, newMsg]);
-    speak(botResponse);
-  };
-
-  const speak = (text) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    window.speechSynthesis.speak(utterance);
-  };
-
-  const toggleListening = () => {
-    if (isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    } else {
-      recognitionRef.current.start();
-      setIsListening(true);
-    }
-  };
-
-  const startRecording = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const recorder = new MediaRecorder(stream);
-    setMediaRecorder(recorder);
-
-    recorder.ondataavailable = (event) => {
-      audioChunks.push(event.data);
-    };
-
-    recorder.onstop = () => {
-      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const a = document.createElement('a');
-      a.href = audioUrl;
-      a.download = 'recording.wav';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setAudioChunks([]);
-    };
-
-    recorder.start();
-    recordingTimeoutRef.current = setTimeout(() => {
-      stopRecording();
-    }, 30000);
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorder) {
-      mediaRecorder.stop();
-    }
-    clearTimeout(recordingTimeoutRef.current);
-    setIsListening(false);
-  };
-
-  const handleVoiceDebate = () => {
-    if (isListening) {
-      stopRecording();
-    } else {
-      startRecording();
-      toggleListening();
-    }
-  };
-
-  const handleDeleteChat = (chatId) => {
-    const updatedChats = sidebarChats.filter(chat => chat._id !== chatId);
-    setSidebarChats(updatedChats);
-
-    if (selectedChat === chatId) {
-      setSelectedChat(updatedChats.length > 0 ? updatedChats[0]._id : null);
-      setMessages([]);
-    }
+      globalSocket.current?.emit("chatUpdated");
+    }).catch(error => {
+      console.error('Error fetching debate details:', error);
+    });
   };
 
   const fetchChatDetails = async (chatId) => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(`http://localhost:8000/api/debate/getDebate/${chatId}`, {
-        headers: {
-          'token': `${token}` // Pass the token in the header
-        }
+        headers: { 'token': token }
       });
 
       if (response.data.success) {
-        const chat = response.data.debate; // Assuming the response contains the full chat object
-        setMessages(chat.stream); // Set messages based on the chat's stream
-      } else {
-        console.error('Failed to fetch chat details:', response.data.message);
+        setMessages(response.data.debate.stream);
+        setTimeout(() => scrollToBottom(true), 100);
       }
     } catch (error) {
       console.error('Error fetching chat details:', error);
     }
   };
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  // Function to open the New Chat Modal
-  const openNewChatModal = () => {
-    setIsNewChatModalOpen(true);
+  const handleCreateChat = async (newChat) => {
+    setSidebarChats(prev => [...prev, { ...newChat, stream: newChat.stream || [] }]);
+    globalSocket.current?.emit("chatCreated");
   };
 
-  const handleCreateChat = (newChatData) => {
-    // Assuming newChatData is the chat object returned from the backend
-    setSidebarChats((prevChats) => [...prevChats, newChatData]); // Append the new chat to the sidebarChats state
+
+  const handleDeleteChat = async (chatId) => {
+    if (!chatId) return;
+
+    const res = confirm("Are you sure you want to delete this chat?");
+    if (!res) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.delete(`http://localhost:8000/api/debate/delete/${chatId}`, {
+        headers: { 'token': token }
+      });
+
+      if (response.data.success) {
+        setSidebarChats(prevChats => prevChats.filter(chat => chat._id !== chatId));
+        if (selectedChat === chatId) {
+          setSelectedChat(null);
+          setMessages([]);
+        }
+        globalSocket.current?.emit("chatDeleted");
+      }
+    } catch (error) {
+      console.error("Failed to delete chat:", error);
+    }
   };
 
   return (
     <div className="flex h-screen bg-[#F8F8F8]">
-      {/* Sidebar */}
-      <Sidebar chats={sidebarChats} selectedChat={selectedChat} setSelectedChat={setSelectedChat} onDeleteChat={handleDeleteChat} fetchChatDetails={fetchChatDetails} />
+      <Sidebar
+        chats={sidebarChats}
+        selectedChat={selectedChat}
+        setSelectedChat={setSelectedChat}
+        onDeleteChat={handleDeleteChat}
+        fetchChatDetails={fetchChatDetails}
+      />
 
-      {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
-        {/* Chat Header */}
         <div className="p-4 border-b border-[#D3C5E5] flex justify-between items-center bg-white">
-          <h2 className="font-medium text-gray-800">{selectedChat ? sidebarChats.find(chat => chat._id === selectedChat)?.title : 'Select a Chat'}</h2>
+          <h2 className="font-medium text-gray-800">
+            {selectedChat ? sidebarChats.find(chat => chat._id === selectedChat)?.title : 'Select a Chat'}
+          </h2>
           <div className="flex items-center space-x-4">
-            <Star className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors" />
-            <Settings className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors" />
+            <Logout
+              className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors"
+              onClick={logout}
+            />
             <button
-              onClick={openNewChatModal}
+              onClick={() => setIsNewChatModalOpen(true)}
               className="flex items-center p-2 bg-[#D3C5E5] text-gray-800 rounded-lg hover:bg-[#D3C5E5]/90 transition-colors"
             >
-              <span>Create New Chat</span>
-            </button>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center p-2 bg-[#D3C5E5] text-gray-800 rounded-lg hover:bg-[#D3C5E5]/90 transition-colors"
-            >
-              <UserIcon className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleVoiceDebate}
-              className={`flex items-center p-2 rounded-lg transition-colors ${isListening ? 'bg-red-200' : 'bg-[#D3C5E5]'} hover:bg-[#D3C5E5]/90`}
-            >
-              {isListening ? <StopCircle className="w-5 h-5 text-red-600" /> : <Mic className="w-5 h-5 text-gray-800" />}
+              Create New Chat
             </button>
           </div>
         </div>
 
-        {/* Messages Container */}
-        <div className="flex-1 overflow-y-auto p-4 bg-[#F8F8F8]">
-          {messages.map((message) => (
-            
+        <div
+          ref={messageContainerRef}
+          className="flex-1 overflow-y-auto p-4 bg-[#F8F8F8]"
+        >
+          {messages.map((message, index) => (
             <div
-              key={message._id}
+              key={index}
               className={`flex ${message.sender === 'User' ? 'justify-end' : 'justify-start'}`}
             >
-              {message.sender === 'AI' && (
-                <div className="h-fit p-2 rounded-xl bg-[#f0f0f0] flex items-center justify-center text-gray-800 mr-2 shadow-sm">
-                  <Bot />
-                </div>
-              ) }
 
               <div
                 className={`max-w-xl rounded-2xl p-3 m-2 shadow-sm
-                  ${message.sender === 'User'
-                    ? 'bg-[#D3C5E5] text-gray-800'
-                    : 'bg-white text-gray-800'
-                  }`}
+    ${message.sender === 'User' ? 'bg-[#D3C5E5] text-gray-800' : 'bg-white text-gray-800'}`}
               >
-                {message.isFile ? (
-                  <div className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity">
-                    <Paperclip className="w-4 h-4" />
-                    
-                    <span>{message.content}</span>
-                  </div>
-                ) : (
-                  <>
-                    {console.log(message)
-            }
-                    <p className=''>{message.message}</p>
-                  </>
-                )}
+                <p dangerouslySetInnerHTML={{ __html: message.message.replace(/\n/g, "<br>") }} />
                 <span className="text-xs text-gray-600">
-                  {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(message.timestamp).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
                 </span>
               </div>
+
             </div>
           ))}
+          {isTyping && (
+            <div className="text-sm text-gray-500 italic">
+              Someone is typing...
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Fixed Input Area */}
         <div className="p-4 bg-white border-t border-[#D3C5E5]">
           <div className="flex items-center space-x-2">
-            <input
-              type="text"
+            <textarea
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(newMessage)}
-              placeholder="Type your message..."
-              className="flex-1 p-2 rounded-xl border border-[#D3C5E5] placeholder-[#D3C5E5]/70 focus:outline-none focus:ring-2 focus:ring-[#D3C5E5]"
+              onChange={handleTyping}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage(newMessage);
+                }
+              }}
+              placeholder="Type your message... (Shift + Enter for new line)"
+              className="flex-1 p-2 rounded-xl border border-[#D3C5E5] placeholder-[#D3C5E5]/70 focus:outline-none focus:ring-2 focus:ring-[#D3C5E5] resize-none"
+              rows="2"
             />
             <button
               onClick={() => handleSendMessage(newMessage)}
@@ -303,13 +328,14 @@ const Chat = () => {
           </div>
         </div>
       </div>
-
-      {/* Modals */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
       {isNewChatModalOpen && (
-        <NewChatModal isOpen={isNewChatModalOpen} onClose={() => setIsNewChatModalOpen(false)} onCreateChat={handleCreateChat} />
+        <NewChatModal
+          isOpen={isNewChatModalOpen}
+          onClose={() => setIsNewChatModalOpen(false)}
+          onCreateChat={handleCreateChat}
+        />
       )}
-
     </div>
   );
 };
