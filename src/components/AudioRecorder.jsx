@@ -3,7 +3,7 @@ import { Client } from "@gradio/client"; // Import Gradio Client
 import {  Mic, StopCircle } from 'lucide-react';
 
 
-const AudioRecorder = () => {
+const AudioRecorder = ({ onTextRecognized }) => {
     const [isRecording, setIsRecording] = useState(false);
     const [blobURL, setBlobURL] = useState('');
     const [mediaRecorder, setMediaRecorder] = useState(null);
@@ -56,10 +56,10 @@ const AudioRecorder = () => {
         const data = result.data[0]; // Get the raw string
         console.log(data);
         
-        const match = data.match(/text='([^']+)'/);// Split by single quote and get the second element
-        console.log(match[1]); // Log the extracted text or use it as needed
-
-        // onTextRecognized(extractedText); // Call the callback to update recognized text
+        const match = data.match(/text='([^']+)'/); // Split by single quote and get the second element
+        if (match && match[1]) {
+            onTextRecognized(match[1]); // Call the callback with the recognized text
+        }
     };
 
     return (

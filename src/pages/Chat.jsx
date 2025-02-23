@@ -29,6 +29,7 @@ const Chat = () => {
   const recordingTimeoutRef = useRef(null);
 
   
+  
 
   useEffect(() => {
     const fetchDebates = async () => {
@@ -276,6 +277,12 @@ const Chat = () => {
     }
   };
 
+  // Function to handle recognized text
+  const handleTextRecognized = (recognizedText) => {
+    console.log("Recognized Text:", recognizedText);
+    // You can also update the state or perform other actions with the recognized text here
+  };
+
   return (
     <div className="flex h-screen bg-[#F8F8F8]">
       <Sidebar
@@ -305,7 +312,7 @@ const Chat = () => {
             <button
               className={`flex items-center p-2 rounded-lg transition-colors ${isListening ? 'bg-red-200' : 'bg-[#D3C5E5]'} hover:bg-[#D3C5E5]/90`}
             >
-              <AudioRecorder />
+              <AudioRecorder onTextRecognized={handleTextRecognized} />
             </button>
           </div>
         </div>
