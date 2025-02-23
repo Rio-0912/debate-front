@@ -28,9 +28,6 @@ const Chat = () => {
   const [audioChunks, setAudioChunks] = useState([]);
   const recordingTimeoutRef = useRef(null);
 
-  
-  
-
   useEffect(() => {
     const fetchDebates = async () => {
       try {
@@ -42,7 +39,11 @@ const Chat = () => {
         });
 
         if (response.data.success) {
-          setSidebarChats(response.data.debates); // Set the fetched debates to sidebarChats state
+          const sortedDebates = response.data.debates.sort((a, b) =>
+            new Date(b.createdAt || b.timestamp) - new Date(a.createdAt || a.timestamp)
+          );
+
+          setSidebarChats(sortedDebates);
         } else {
           console.error('Failed to fetch debates:', response.data.message);
         }
@@ -53,6 +54,7 @@ const Chat = () => {
 
     fetchDebates();
   }, []);
+
 
   const [socket, setSocket] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
@@ -154,6 +156,7 @@ const Chat = () => {
       newSocket.emit('join', selectedChat);
 
       newSocket.on("messages", (updatedStream) => {
+        console.log(updatedStream)
         setMessages(updatedStream);
         // Scroll to bottom after messages update
         setTimeout(() => scrollToBottom(), 100);
@@ -281,6 +284,7 @@ const Chat = () => {
   const handleTextRecognized = (recognizedText) => {
     console.log("Recognized Text:", recognizedText);
     // You can also update the state or perform other actions with the recognized text here
+    setNewMessage(recognizedText);
   };
 
   return (
@@ -307,7 +311,7 @@ const Chat = () => {
               onClick={() => setIsNewChatModalOpen(true)}
               className="flex items-center p-2 bg-[#D3C5E5] text-gray-800 rounded-lg hover:bg-[#D3C5E5]/90 transition-colors"
             >
-              <UserIcon className="w-5 h-5" />
+              Create New Debate
             </button>
             <button
               className={`flex items-center p-2 rounded-lg transition-colors ${isListening ? 'bg-red-200' : 'bg-[#D3C5E5]'} hover:bg-[#D3C5E5]/90`}
