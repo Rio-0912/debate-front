@@ -1,102 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Clock, Star, Settings, X, Paperclip, Send, Bot, User, Mic, StopCircle } from 'lucide-react';
+import { Clock, Star, Settings, X, Paperclip, Send, Bot, User as UserIcon, Mic, StopCircle } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import Modal from '../components/Modal';
 import NewChatModal from '../components/NewChatModal';
-import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 
 const Chat = () => {
-  const { user, loading, logout } = useAuth();
-  console.log(user.user);
-
-  const [selectedChat, setSelectedChat] = useState(1);
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      author: "Luis Easton",
-      avatar: <Bot />,
-      content: "Can you please help me with an insurance claim?",
-      time: "10m",
-      type: "received"
-    },
-    {
-      id: 2,
-      content: "Hi Luis 👋 Happy to help! Can you please share with me a proof of payment?",
-      time: "11m",
-      type: "sent",
-      seen: true
-    },
-    {
-      id: 3,
-      author: "Luis Easton",
-      avatar: <Bot />,
-      content: "proof_of_payment.pdf - 1.04 MB",
-      time: "15m",
-      type: "received",
-      isFile: true
-    },
-    {
-      id: 4,
-      content: "Perfect! I will review the details to confirm that the vendor is one of our partners and get back to you.",
-      time: "16m",
-      type: "sent",
-      seen: true
-    },
-    {
-      id: 5,
-      author: "Luis Easton",
-      avatar: <Bot />,
-      content: "Thank you so much for your help!",
-      time: "20m",
-      type: "received"
-    }
-  ]);
-
-  const sidebarChats = [
-    {
-      id: 1,
-      author: "Luis Easton",
-      avatar: <Bot />,
-      preview: "Thank you for your...",
-      time: "20m",
-      bgColor: "#D3C5E5"
-    },
-    {
-      id: 2,
-      author: "Eric · Whitewings",
-      avatar: "E",
-      preview: "Let me look that up...",
-      time: "25m",
-      bgColor: "#D3C5E5"
-    },
-    {
-      id: 3,
-      author: "Carlos · Clippers Co",
-      avatar: "C",
-      preview: "#8742 · Signup fix",
-      subPreview: "Let me look that up...",
-      time: "30m",
-      bgColor: "#D3C5E5"
-    },
-    {
-      id: 4,
-      author: "Ana Suarez",
-      avatar: "A",
-      preview: "Signup question",
-      subPreview: "Preview....",
-      time: "1h",
-      bgColor: "#D3C5E5"
-    },
-    {
-      id: 5,
-      author: "Global login issue",
-      preview: "#8741 · All users",
-      subPreview: "Investigating a fix",
-      time: "2h",
-      isSystem: true
-    }
-  ];
-
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [sidebarChats, setSidebarChats] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
@@ -106,6 +18,38 @@ const Chat = () => {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioChunks, setAudioChunks] = useState([]);
   const recordingTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    const fetchDebates = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get('http://localhost:8000/api/debate/getAllDebates/', {
+          headers: {
+            'token': `${token}` // Pass the token in the header
+          }
+        });
+
+        if (response.data.success) {
+          setSidebarChats(response.data.debates); // Set the fetched debates to sidebarChats state
+        } else {
+          console.error('Failed to fetch debates:', response.data.message);
+        }
+      } catch (error) {
+        console.error('Error fetching debates:', error);
+      }
+    };
+
+    fetchDebates();
+  }, []); // Fetch debates on component mount
+
+  useEffect(() => {
+    if (selectedChat) {
+      const chat = sidebarChats.find(chat => chat._id === selectedChat);
+      if (chat) {
+        setMessages(chat.stream); // Set messages based on the selected chat's stream
+      }
+    }
+  }, [selectedChat, sidebarChats]); // Update messages when selectedChat or sidebarChats change
 
   useEffect(() => {
     recognitionRef.current = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -218,12 +162,32 @@ const Chat = () => {
   };
 
   const handleDeleteChat = (chatId) => {
-    const updatedChats = sidebarChats.filter(chat => chat.id !== chatId);
+    const updatedChats = sidebarChats.filter(chat => chat._id !== chatId);
     setSidebarChats(updatedChats);
 
     if (selectedChat === chatId) {
-      setSelectedChat(updatedChats.length > 0 ? updatedChats[0].id : null);
+      setSelectedChat(updatedChats.length > 0 ? updatedChats[0]._id : null);
       setMessages([]);
+    }
+  };
+
+  const fetchChatDetails = async (chatId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`http://localhost:8000/api/debate/getDebate/${chatId}`, {
+        headers: {
+          'token': `${token}` // Pass the token in the header
+        }
+      });
+
+      if (response.data.success) {
+        const chat = response.data.debate; // Assuming the response contains the full chat object
+        setMessages(chat.stream); // Set messages based on the chat's stream
+      } else {
+        console.error('Failed to fetch chat details:', response.data.message);
+      }
+    } catch (error) {
+      console.error('Error fetching chat details:', error);
     }
   };
 
@@ -234,18 +198,18 @@ const Chat = () => {
   return (
     <div className="flex h-screen bg-[#F8F8F8]">
       {/* Sidebar */}
-      <Sidebar chats={sidebarChats} selectedChat={selectedChat} setSelectedChat={setSelectedChat} onDeleteChat={handleDeleteChat} />
+      <Sidebar chats={sidebarChats} selectedChat={selectedChat} setSelectedChat={setSelectedChat} onDeleteChat={handleDeleteChat} fetchChatDetails={fetchChatDetails} />
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Chat Header */}
         <div className="p-4 border-b border-[#bg-gray-50] flex justify-between items-center bg-white">
-          <h2 className="font-medium text-gray-800">Luis Easton</h2>
+          <h2 className="font-medium text-gray-800">{selectedChat ? sidebarChats.find(chat => chat._id === selectedChat)?.title : 'Select a Chat'}</h2>
           <div className="flex items-center space-x-4">
             <Star className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors" />
-            <Settings className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors" onClick={logout} />
+            <Settings className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors" />
             <button
-              onClick={() => setIsNewChatModalOpen(true)}
+              onClick={() => setIsNewChatModalOpen(false)}
               className="flex items-center p-2 bg-[#D3C5E5] text-gray-800 rounded-lg hover:bg-[#D3C5E5]/90 transition-colors"
             >
               <span>Create New Chat</span>
@@ -254,7 +218,7 @@ const Chat = () => {
               onClick={() => setIsModalOpen(true)}
               className="flex items-center p-2 bg-[#D3C5E5] text-gray-800 rounded-lg hover:bg-[#D3C5E5]/90 transition-colors"
             >
-              <User className="w-5 h-5" />
+              <UserIcon className="w-5 h-5" />
             </button>
             <button
               onClick={handleVoiceDebate}
@@ -270,16 +234,17 @@ const Chat = () => {
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex ${message.type === 'sent' ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${message.sender === 'User' ? 'justify-end' : 'justify-start'}`}
             >
-              {message.type === 'received' && (
+              {message.type === 'Ai' && (
                 <div className="w-8 h-8 rounded-xl bg-[#D3C5E5] flex items-center justify-center text-gray-800 mr-2 shadow-sm">
                   <Bot />
                 </div>
               )}
+             
               <div
                 className={`max-w-xl rounded-2xl p-3 shadow-sm
-                  ${message.type === 'sent'
+                  ${message.sender === 'User'
                     ? 'bg-[#D3C5E5] text-gray-800'
                     : 'bg-white text-gray-800'
                   }`}
@@ -290,9 +255,11 @@ const Chat = () => {
                     <span>{message.content}</span>
                   </div>
                 ) : (
-                  <p>{message.content}</p>
+                  <p>{message.message}</p>
                 )}
-                <span className="text-xs text-gray-00">{message.time}</span>
+                <span className="text-xs text-gray-600">
+                  {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
               </div>
             </div>
           ))}
@@ -322,7 +289,7 @@ const Chat = () => {
 
       {/* Modals */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
-      <NewChatModal isOpen={isNewChatModalOpen} onClose={() => setIsNewChatModalOpen(false)} />
+      {/* <NewChatModal isOpen={isNewChatModalOpen} onClose={() => setIsNewChatModalOpen(false)} /> */}
     </div>
   );
 };

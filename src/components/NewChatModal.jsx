@@ -14,6 +14,7 @@ const api = axios.create({
     credentials: 'include',
     headers: {
         'Content-Type': 'application/json',
+        'token': `${localStorage.getItem('token')}`
     }
 });
 
@@ -34,6 +35,9 @@ const NewChatModal = ({ isOpen, onClose, onCreateChat }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        
+
         try {
             const data = {
                 mood: chatNature,
@@ -42,7 +46,10 @@ const NewChatModal = ({ isOpen, onClose, onCreateChat }) => {
             };
             console.log('Sending data:', data);
 
-            const response = await api.post(`${backend}/api/debate/create`, data, { withCredentials: true });
+            const response = await api.post(`${backend}/api/debate/create`, data, { 
+                withCredentials: true,
+               
+            });
             onCreateChat(response.data);
             onClose();
         } catch (error) {
@@ -55,7 +62,9 @@ const NewChatModal = ({ isOpen, onClose, onCreateChat }) => {
             {/* Your existing JSX remains the same */}
             <div className="bg-white rounded-xl shadow-lg p-6 w-96 relative">
                 <IconButton
-                    onClick={onClose}
+                    onClick={() => {
+                        onClose();
+                    }}
                     className="absolute top-4 right-4 text-gray-500 hover:text-black"
                 >
                     <Close />

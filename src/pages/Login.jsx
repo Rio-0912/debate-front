@@ -4,7 +4,7 @@ import axios from 'axios';
 import Mail from '@mui/icons-material/Mail';
 import Lock from '@mui/icons-material/Lock';
 import Person from '@mui/icons-material/Person';
-import { MailLock, Person2 } from '@mui/icons-material';
+import { Person2 } from '@mui/icons-material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { backend } from '../assets/utils/constants';
 import { useAuth } from '../context/AuthContext';
@@ -18,8 +18,8 @@ const Login = () => {
         password: '',
         firstName: '',
         lastName: '',
-        confirmPassword: '',
     });
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -55,12 +55,14 @@ const Login = () => {
             });
 
             if (!isSignup) login(res.data);
+            localStorage.setItem('token', res.data.token)
             navigate('/chat');
         } catch (err) {
             setError(err.response?.data?.message || 'Authentication failed');
         } finally {
             setLoading(false);
         }
+
     };
 
     return (
@@ -167,6 +169,7 @@ const Login = () => {
                             onClick={() => {
                                 setIsSignup(!isSignup);
                                 setError('');
+                                // navigate('/chat')
                             }}
                             className="ml-2 font-semibold underline-offset-4 hover:underline hover:text-purple-800 transition-all"
                         >
