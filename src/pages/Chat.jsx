@@ -3,7 +3,10 @@ import { Clock, Star, Settings, X, Paperclip, Send, Bot, User as UserIcon, Mic, 
 import Sidebar from '../components/Sidebar';
 import Modal from '../components/Modal';
 import NewChatModal from '../components/NewChatModal';
+import AudioRecorder from '../components/AudioRecorder';
 import axios from 'axios';
+import { backend } from '../assets/utils/constants';
+
 
 const Chat = () => {
   const [selectedChat, setSelectedChat] = useState(null);
@@ -18,13 +21,13 @@ const Chat = () => {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioChunks, setAudioChunks] = useState([]);
   const recordingTimeoutRef = useRef(null);
-
+  
 
   useEffect(() => {
     const fetchDebates = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get('http://localhost:8000/api/debate/getAllDebates/', {
+        const response = await axios.get(`${backend}/api/debate/getAllDebates/`, {
           headers: {
             'token': `${token}` // Pass the token in the header
           }
@@ -175,7 +178,7 @@ const Chat = () => {
   const fetchChatDetails = async (chatId) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`http://localhost:8000/api/debate/getDebate/${chatId}`, {
+      const response = await axios.get(`${backend}/api/debate/getDebate/${chatId}`, {
         headers: {
           'token': `${token}` // Pass the token in the header
         }
@@ -232,10 +235,10 @@ const Chat = () => {
               <UserIcon className="w-5 h-5" />
             </button>
             <button
-              onClick={handleVoiceDebate}
-              className={`flex items-center p-2 rounded-lg transition-colors ${isListening ? 'bg-red-200' : 'bg-[#D3C5E5]'} hover:bg-[#D3C5E5]/90`}
+          className={`flex items-center p-2 rounded-lg transition-colors ${isListening ? 'bg-red-200' : 'bg-[#D3C5E5]'} hover:bg-[#D3C5E5]/90`}
+              // onClick={handleVoiceDebate}
             >
-              {isListening ? <StopCircle className="w-5 h-5 text-red-600" /> : <Mic className="w-5 h-5 text-gray-800" />}
+              <AudioRecorder/>
             </button>
           </div>
         </div>
@@ -306,6 +309,7 @@ const Chat = () => {
 
       {/* Modals */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+
       {isNewChatModalOpen && (
         <NewChatModal isOpen={isNewChatModalOpen} onClose={() => setIsNewChatModalOpen(false)} onCreateChat={handleCreateChat} />
       )}
