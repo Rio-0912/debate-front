@@ -1,11 +1,12 @@
 import React from "react";
 import { createContext, useContext, useState, useEffect } from "react";
-
+import { useNavigate } from "react-router";
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true); // <-- Add loading state
+    const navigate = useNavigate();
 
     useEffect(() => {
         // Simulate fetching user from localStorage or API
@@ -23,6 +24,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         localStorage.removeItem("user");
+        navigate("/home");
         setUser(null);
     };
 

@@ -3,8 +3,12 @@ import { Clock, Star, Settings, X, Paperclip, Send, Bot, User, Mic, StopCircle }
 import Sidebar from '../components/Sidebar';
 import Modal from '../components/Modal';
 import NewChatModal from '../components/NewChatModal';
+import { useAuth } from '../context/AuthContext';
 
 const Chat = () => {
+  const { user, loading, logout } = useAuth();
+  console.log(user.user);
+
   const [selectedChat, setSelectedChat] = useState(1);
   const [messages, setMessages] = useState([
     {
@@ -239,7 +243,7 @@ const Chat = () => {
           <h2 className="font-medium text-gray-800">Luis Easton</h2>
           <div className="flex items-center space-x-4">
             <Star className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors" />
-            <Settings className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors" />
+            <Settings className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors" onClick={logout} />
             <button
               onClick={() => setIsNewChatModalOpen(true)}
               className="flex items-center p-2 bg-[#D3C5E5] text-gray-800 rounded-lg hover:bg-[#D3C5E5]/90 transition-colors"
@@ -270,7 +274,7 @@ const Chat = () => {
             >
               {message.type === 'received' && (
                 <div className="w-8 h-8 rounded-xl bg-[#D3C5E5] flex items-center justify-center text-gray-800 mr-2 shadow-sm">
-                  <Bot/>
+                  <Bot />
                 </div>
               )}
               <div

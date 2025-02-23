@@ -1,9 +1,8 @@
 import React from 'react'
-import { BrowserRouter as Router, Routes, Route } from "react-router"
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router"
 import { AuthProvider, useAuth } from "./context/AuthContext"
 import Login from "./pages/Login"
 import Home from "./pages/Home"
-// import { Navigate } from "react-router"
 import './App.css'
 import Chat from './pages/Chat'
 
@@ -22,10 +21,10 @@ function App() {
     <Router>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Home/>} />
-          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Navigate to={"/home"} />} />
           <Route path="/home" element={<Home />} />
-          <Route path='/chat' element={<Chat/>}/>
+          <Route path="/login" element={<Login />} />
+          <Route path='/chat' element={<ProtectedRoute><Chat /></ProtectedRoute>} />
         </Routes>
       </AuthProvider>
     </Router>

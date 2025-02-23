@@ -1,58 +1,60 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { 
-  MenuItem, Select, InputLabel, FormControl, Chip, OutlinedInput, 
-  Slider, IconButton, Box, Typography, Button
+import {
+    MenuItem, Select, InputLabel, FormControl, Chip, OutlinedInput,
+    Slider, IconButton, Box, Typography, Button
 } from '@mui/material';
-import { Close, Psychology, Group, FormatQuote, TagFaces, Send } from '@mui/icons-material';
+import { Close, Psychology, Group, FormatQuote, TagFaces, Send, Whatshot, Shield, HelpOutline, Tag } from '@mui/icons-material';
+import { Gavel } from 'lucide-react';
+import { backend } from '../assets/utils/constants';
+
+// Create an axios instance with default config
+const api = axios.create({
+    withCredentials: true,
+    credentials: 'include',
+    headers: {
+        'Content-Type': 'application/json',
+    }
+});
 
 const NewChatModal = ({ isOpen, onClose, onCreateChat }) => {
     const [debateTopic, setDebateTopic] = useState('');
     const [position, setPosition] = useState('');
-    const [famousDebater, setFamousDebater] = useState('');
     const [chatNature, setChatNature] = useState([]);
-    const [aggressionLevel, setAggressionLevel] = useState(3);
 
     const natureOptions = [
-        { label: 'Roasting', icon: <TagFaces fontSize="small" />, color: '#D32F2F' },
-        { label: 'Oxford Style', icon: <FormatQuote fontSize="small" />, color: '#388E3C' },
-        { label: 'References', icon: <Psychology fontSize="small" />, color: '#1976D2' },
-        { label: 'Formal', icon: <Group fontSize="small" />, color: '#7B1FA2' },
-        { label: 'Informal', icon: <TagFaces fontSize="small" />, color: '#FBC02D' }
-    ];
-
-    const famousDebaters = [
-        { name: 'Christopher Hitchens', style: 'Philosophical', expertise: 'Religion' },
-        { name: 'Debbie Wasserman Schultz', style: 'Political', expertise: 'Policy' },
-        { name: 'Jordan Peterson', style: 'Psychological', expertise: 'Culture' },
-        { name: 'Ben Shapiro', style: 'Fast-paced', expertise: 'Politics' },
-        { name: 'Sam Harris', style: 'Scientific', expertise: 'Ethics' }
+        { label: 'Passionate', icon: <Whatshot fontSize="small" />, color: '#D32F2F' },
+        { label: 'Aggressive', icon: <Gavel fontSize="small" />, color: '#C62828' },
+        { label: 'Defensive', icon: <Shield fontSize="small" />, color: '#1976D2' },
+        { label: 'Skeptical', icon: <HelpOutline fontSize="small" />, color: '#FFA000' },
+        { label: 'Thoughtful', icon: <Psychology fontSize="small" />, color: '#7B1FA2' },
+        { label: 'Collaborative', icon: <Group fontSize="small" />, color: '#388E3C' },
+        { label: 'Playful', icon: <TagFaces fontSize="small" />, color: '#FBC02D' }
     ];
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await axios.post('http://localhost:8000/api/chat/new', {
-                debateTopic,
-                position,
-                famousDebater,
-                aggressionLevel,
-                chatNature
-            }, { withCredentials: true });
-            console.log('New chat created:', response.data);
+            const data = {
+                mood: chatNature,
+                topic: debateTopic,
+                aiInclination: position
+            };
+            console.log('Sending data:', data);
+
+            const response = await api.post(`${backend}/api/debate/create`, data, { withCredentials: true });
             onCreateChat(response.data);
             onClose();
         } catch (error) {
-            console.error('Error creating new chat:', error);
+            console.error('Error creating new chat:', error.response || error);
         }
     };
 
-    if (!isOpen) return null;
-
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-[#1d1d1da8] bg-opacity-90 backdrop-blur-sm transition-all">
+            {/* Your existing JSX remains the same */}
             <div className="bg-white rounded-xl shadow-lg p-6 w-96 relative">
-                <IconButton 
+                <IconButton
                     onClick={onClose}
                     className="absolute top-4 right-4 text-gray-500 hover:text-black"
                 >
@@ -88,7 +90,7 @@ const NewChatModal = ({ isOpen, onClose, onCreateChat }) => {
                         {/* Position Select */}
                         <div>
                             <Typography variant="body2" className="text-gray-700 mb-1">
-                                Your Position <span className="text-purple-500">*</span>
+                                AI Inclination <span className="text-purple-500">*</span>
                             </Typography>
                             <FormControl fullWidth>
                                 <Select
@@ -97,77 +99,48 @@ const NewChatModal = ({ isOpen, onClose, onCreateChat }) => {
                                     className="text-gray-900 bg-gray-100 rounded-lg"
                                     required
                                 >
-                                    <MenuItem value="Pro" className="text-green-600">Pro Team</MenuItem>
-                                    <MenuItem value="Opposition" className="text-red-600">Opposition Team</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </div>
-
-                        {/* Famous Debater Select */}
-                        <div>
-                            <Typography variant="body2" className="text-gray-700 mb-1">
-                                Choose Your Champion <span className="text-purple-500">*</span>
-                            </Typography>
-                            <FormControl fullWidth>
-                                <Select
-                                    value={famousDebater}
-                                    onChange={(e) => setFamousDebater(e.target.value)}
-                                    className="text-gray-900 bg-gray-100 rounded-lg"
-                                    required
-                                >
-                                    {famousDebaters.map((debater) => (
-                                        <MenuItem 
-                                            key={debater.name} 
-                                            value={debater.name}
-                                            className="flex justify-between items-center"
-                                        >
-                                            <div>
-                                                <div className="text-gray-900">{debater.name}</div>
-                                                <div className="text-xs text-gray-500">
-                                                    {debater.style} • {debater.expertise}
-                                                </div>
-                                            </div>
-                                        </MenuItem>
-                                    ))}
+                                    <MenuItem value="For" className="text-green-600">For</MenuItem>
+                                    <MenuItem value="Against" className="text-red-600">Against</MenuItem>
+                                    <MenuItem value="Neutral" className="text-gray-600">Neutral</MenuItem>
                                 </Select>
                             </FormControl>
                         </div>
 
                         {/* Chat Nature Multi-Select */}
                         <div>
-                            <Typography variant="body2" className="text-gray-700 mb-1">
+                            <label className="text-sm text-gray-700 mb-1 block">
                                 Debate Style <span className="text-purple-500">*</span>
-                            </Typography>
-                            <FormControl fullWidth>
-                                <Select
-                                    multiple
-                                    value={chatNature}
-                                    onChange={(e) => setChatNature(e.target.value)}
-                                    input={<OutlinedInput className="text-gray-900" />}
-                                    renderValue={(selected) => (
-                                        <div className="flex flex-wrap gap-1">
-                                            {selected.map((value) => {
-                                                const option = natureOptions.find(opt => opt.label === value);
-                                                return (
-                                                    <Chip 
-                                                        key={value}
-                                                        label={value}
-                                                        size="small"
-                                                        style={{ backgroundColor: option.color, color: 'white' }}
-                                                    />
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                    className="bg-gray-100 rounded-lg"
-                                >
-                                    {natureOptions.map((option) => (
-                                        <MenuItem key={option.label} value={option.label}>
-                                            {option.icon} {option.label}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
+                            </label>
+                            <Select
+                                multiple
+                                value={chatNature}
+                                onChange={(e) => setChatNature(e.target.value)}
+                                input={<OutlinedInput />}
+                                renderValue={(selected) => (
+                                    <div className="flex flex-wrap gap-1">
+                                        {selected.map((value) => {
+                                            const option = natureOptions.find(opt => opt.label === value);
+                                            return (
+                                                <Chip
+                                                    key={value}
+                                                    label={value}
+                                                    size="small"
+                                                    className="text-white"
+                                                    style={{ backgroundColor: option?.color }}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                className="w-full bg-gray-100"
+                            >
+                                {natureOptions.map((option) => (
+                                    <MenuItem key={option.label} value={option.label} className="flex items-center gap-2">
+                                        {option.icon}
+                                        <span>{option.label}</span>
+                                    </MenuItem>
+                                ))}
+                            </Select>
                         </div>
 
                         {/* Submit Button */}

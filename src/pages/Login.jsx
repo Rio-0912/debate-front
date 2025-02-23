@@ -6,9 +6,12 @@ import Lock from '@mui/icons-material/Lock';
 import Person from '@mui/icons-material/Person';
 import { MailLock, Person2 } from '@mui/icons-material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { backend } from '../assets/utils/constants';
+import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
     const navigate = useNavigate();
+    const { login } = useAuth();
     const [isSignup, setIsSignup] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
@@ -44,14 +47,14 @@ const Login = () => {
         setLoading(true);
         try {
             const url = isSignup ?
-                'http://localhost:8000/api/auth/signup' :
-                'http://localhost:8000/api/auth/login';
+                backend + '/api/auth/signup' :
+                backend + '/api/auth/login';
 
             const res = await axios.post(url, formData, {
                 withCredentials: true
             });
 
-            localStorage.setItem('authToken', res.data.token);
+            if (!isSignup) login(res.data);
             navigate('/chat');
         } catch (err) {
             setError(err.response?.data?.message || 'Authentication failed');
