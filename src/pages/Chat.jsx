@@ -44,6 +44,14 @@ const Chat = () => {
           setSidebarChats(response.data.debates); // Set the fetched debates to sidebarChats state
         } else {
           console.error('Failed to fetch debates:', response.data.message);
+        }
+      } catch (error) {
+        console.error('Error fetching debates:', error);
+      }
+    };
+
+    fetchDebates();
+  }, []);
 
   const [socket, setSocket] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
@@ -71,7 +79,6 @@ const Chat = () => {
       const response = await axios.get('http://localhost:8000/api/debate/getAllDebates/', {
         headers: {
           'token': `${token}`
-
         }
       });
 
@@ -227,7 +234,6 @@ const Chat = () => {
         headers: {
           'token': `${token}` // Pass the token in the header
         }
-
       });
 
       if (response.data.success) {
@@ -294,15 +300,12 @@ const Chat = () => {
               onClick={() => setIsNewChatModalOpen(true)}
               className="flex items-center p-2 bg-[#D3C5E5] text-gray-800 rounded-lg hover:bg-[#D3C5E5]/90 transition-colors"
             >
-
               <UserIcon className="w-5 h-5" />
             </button>
             <button
-          className={`flex items-center p-2 rounded-lg transition-colors ${isListening ? 'bg-red-200' : 'bg-[#D3C5E5]'} hover:bg-[#D3C5E5]/90`}
-              // onClick={handleVoiceDebate}
+              className={`flex items-center p-2 rounded-lg transition-colors ${isListening ? 'bg-red-200' : 'bg-[#D3C5E5]'} hover:bg-[#D3C5E5]/90`}
             >
-              <AudioRecorder/>
-
+              <AudioRecorder />
             </button>
           </div>
         </div>

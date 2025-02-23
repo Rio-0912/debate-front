@@ -12,7 +12,6 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
-    "@gradio/client": "^1.12.0",
     "@mui/icons-material": "^6.4.5",
     "@mui/material": "^6.4.5",
     "@tailwindcss/vite": "^4.0.8",
@@ -35,6 +34,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",
+    "@gradio/client": "^1.12.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
