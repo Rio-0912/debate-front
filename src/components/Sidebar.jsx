@@ -11,7 +11,7 @@ const Sidebar = ({ selectedChat, setSelectedChat, onDeleteChat, fetchChatDetails
                 const token = localStorage.getItem("token");
                 const response = await axios.get('http://localhost:8000/api/debate/getAllDebates/', {
                     headers: {
-                        'token': `${token}` // Pass the token in the header
+                        'token': `${token}`
                     }
                 });
                 
@@ -29,26 +29,26 @@ const Sidebar = ({ selectedChat, setSelectedChat, onDeleteChat, fetchChatDetails
     }, []);
 
     return (
-        <div className="w-80 border-r border-[#D3C5E5] bg-white shadow-md">
+        <div className="w-80 border-r border-[#D3C5E5] bg-white shadow-md h-full overflow-y-auto">
             <div className="p-4 border-b border-[#D3C5E5] flex items-center justify-between">
                 <h1 className="font-medium text-lg text-gray-700">Your Chats</h1>
             </div>
 
             {/* Sidebar Chat List */}
-            <div className="overflow-y-auto">
+            <div className="h-fit">
                 {chats.map((chat) => (
                     <div 
                         key={chat._id} 
                         onClick={() => {
                             setSelectedChat(chat._id);
-                            fetchChatDetails(chat._id); // Fetch chat details when clicked
+                            fetchChatDetails(chat._id);
                         }}
                         className={`p-4 cursor-pointer transition-colors duration-150
                             ${selectedChat === chat._id ? 'bg-[#D3C5E5]/40' : 'hover:bg-[#D3C5E5]/20'} rounded-lg m-2 flex items-center justify-between`}
                     >
                         <div className="flex items-center space-x-3">
                             <div className={`w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 shadow-md`}>
-                                <Bot className="w-5 h-5" /> {/* Placeholder for avatar */}
+                                <Bot className="w-5 h-5" />
                             </div>
                             <div className="flex-1">
                                 <div className="flex justify-between items-center">
@@ -60,8 +60,8 @@ const Sidebar = ({ selectedChat, setSelectedChat, onDeleteChat, fetchChatDetails
                         </div>
                         <button 
                             onClick={(e) => {
-                                e.stopPropagation(); // Prevent triggering the chat selection
-                                onDeleteChat(chat._id); // Call the delete function
+                                e.stopPropagation();
+                                onDeleteChat(chat._id);
                             }}
                             className="text-gray-600 hover:text-red-500 ml-4"
                             aria-label="Delete chat"

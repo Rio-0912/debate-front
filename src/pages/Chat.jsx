@@ -19,6 +19,7 @@ const Chat = () => {
   const [audioChunks, setAudioChunks] = useState([]);
   const recordingTimeoutRef = useRef(null);
 
+
   useEffect(() => {
     const fetchDebates = async () => {
       try {
@@ -195,6 +196,16 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Function to open the New Chat Modal
+  const openNewChatModal = () => {
+    setIsNewChatModalOpen(true);
+  };
+
+  const handleCreateChat = (newChatData) => {
+    // Assuming newChatData is the chat object returned from the backend
+    setSidebarChats((prevChats) => [...prevChats, newChatData]); // Append the new chat to the sidebarChats state
+  };
+
   return (
     <div className="flex h-screen bg-[#F8F8F8]">
       {/* Sidebar */}
@@ -203,13 +214,13 @@ const Chat = () => {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Chat Header */}
-        <div className="p-4 border-b border-[#bg-gray-50] flex justify-between items-center bg-white">
+        <div className="p-4 border-b border-[#D3C5E5] flex justify-between items-center bg-white">
           <h2 className="font-medium text-gray-800">{selectedChat ? sidebarChats.find(chat => chat._id === selectedChat)?.title : 'Select a Chat'}</h2>
           <div className="flex items-center space-x-4">
             <Star className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors" />
             <Settings className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors" />
             <button
-              onClick={() => setIsNewChatModalOpen(false)}
+              onClick={openNewChatModal}
               className="flex items-center p-2 bg-[#D3C5E5] text-gray-800 rounded-lg hover:bg-[#D3C5E5]/90 transition-colors"
             >
               <span>Create New Chat</span>
@@ -229,21 +240,22 @@ const Chat = () => {
           </div>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#F8F8F8]">
+        {/* Messages Container */}
+        <div className="flex-1 overflow-y-auto p-4 bg-[#F8F8F8]">
           {messages.map((message) => (
+            
             <div
-              key={message.id}
+              key={message._id}
               className={`flex ${message.sender === 'User' ? 'justify-end' : 'justify-start'}`}
             >
-              {message.type === 'Ai' && (
-                <div className="w-8 h-8 rounded-xl bg-[#D3C5E5] flex items-center justify-center text-gray-800 mr-2 shadow-sm">
+              {message.sender === 'AI' && (
+                <div className="h-fit p-2 rounded-xl bg-[#f0f0f0] flex items-center justify-center text-gray-800 mr-2 shadow-sm">
                   <Bot />
                 </div>
-              )}
-             
+              ) }
+
               <div
-                className={`max-w-xl rounded-2xl p-3 shadow-sm
+                className={`max-w-xl rounded-2xl p-3 m-2 shadow-sm
                   ${message.sender === 'User'
                     ? 'bg-[#D3C5E5] text-gray-800'
                     : 'bg-white text-gray-800'
@@ -252,10 +264,15 @@ const Chat = () => {
                 {message.isFile ? (
                   <div className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity">
                     <Paperclip className="w-4 h-4" />
+                    
                     <span>{message.content}</span>
                   </div>
                 ) : (
-                  <p>{message.message}</p>
+                  <>
+                    {console.log(message)
+            }
+                    <p className=''>{message.message}</p>
+                  </>
                 )}
                 <span className="text-xs text-gray-600">
                   {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -266,7 +283,7 @@ const Chat = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Message Input */}
+        {/* Fixed Input Area */}
         <div className="p-4 bg-white border-t border-[#D3C5E5]">
           <div className="flex items-center space-x-2">
             <input
@@ -289,7 +306,10 @@ const Chat = () => {
 
       {/* Modals */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
-      {/* <NewChatModal isOpen={isNewChatModalOpen} onClose={() => setIsNewChatModalOpen(false)} /> */}
+      {isNewChatModalOpen && (
+        <NewChatModal isOpen={isNewChatModalOpen} onClose={() => setIsNewChatModalOpen(false)} onCreateChat={handleCreateChat} />
+      )}
+
     </div>
   );
 };
