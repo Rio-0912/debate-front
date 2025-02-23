@@ -10,7 +10,7 @@ const Chat = () => {
     {
       id: 1,
       author: "Luis Easton",
-      avatar: <Bot/>,
+      avatar: <Bot />,
       content: "Can you please help me with an insurance claim?",
       time: "10m",
       type: "received"
@@ -25,7 +25,7 @@ const Chat = () => {
     {
       id: 3,
       author: "Luis Easton",
-      avatar: <Bot/>,
+      avatar: <Bot />,
       content: "proof_of_payment.pdf - 1.04 MB",
       time: "15m",
       type: "received",
@@ -41,7 +41,7 @@ const Chat = () => {
     {
       id: 5,
       author: "Luis Easton",
-      avatar: <Bot/>,
+      avatar: <Bot />,
       content: "Thank you so much for your help!",
       time: "20m",
       type: "received"
@@ -52,10 +52,10 @@ const Chat = () => {
     {
       id: 1,
       author: "Luis Easton",
-      avatar: <Bot/>,
+      avatar: <Bot />,
       preview: "Thank you for your...",
       time: "20m",
-      bgColor: "bg-purple-400"
+      bgColor: "#D3C5E5"
     },
     {
       id: 2,
@@ -63,7 +63,7 @@ const Chat = () => {
       avatar: "E",
       preview: "Let me look that up...",
       time: "25m",
-      bgColor: "bg-yellow-400"
+      bgColor: "#D3C5E5"
     },
     {
       id: 3,
@@ -72,7 +72,7 @@ const Chat = () => {
       preview: "#8742 · Signup fix",
       subPreview: "Let me look that up...",
       time: "30m",
-      bgColor: "bg-gray-900"
+      bgColor: "#D3C5E5"
     },
     {
       id: 4,
@@ -81,7 +81,7 @@ const Chat = () => {
       preview: "Signup question",
       subPreview: "Preview....",
       time: "1h",
-      bgColor: "bg-red-400"
+      bgColor: "#D3C5E5"
     },
     {
       id: 5,
@@ -99,9 +99,11 @@ const Chat = () => {
   const messagesEndRef = useRef(null);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef(null);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [audioChunks, setAudioChunks] = useState([]);
+  const recordingTimeoutRef = useRef(null);
 
   useEffect(() => {
-    // Initialize speech recognition
     recognitionRef.current = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     recognitionRef.current.interimResults = true;
     recognitionRef.current.lang = 'en-US';
@@ -113,7 +115,7 @@ const Chat = () => {
         .join('');
 
       if (event.results[0].isFinal) {
-        handleSendMessage(transcript); // Send the recognized speech as a message
+        handleSendMessage(transcript);
       }
     };
 
@@ -122,7 +124,7 @@ const Chat = () => {
     };
 
     return () => {
-      recognitionRef.current = null; // Clean up on unmount
+      recognitionRef.current = null;
     };
   }, []);
 
@@ -135,12 +137,11 @@ const Chat = () => {
       seen: false
     };
     setMessages([...messages, newMsg]);
-    respondToUser(content); // Respond to the user's message
-    setNewMessage('')
+    respondToUser(content);
+    setNewMessage('');
   };
 
   const respondToUser = (userMessage) => {
-    // Here you can implement logic to generate a response based on userMessage
     const botResponse = `You said: ${userMessage}. `;
     const newMsg = {
       id: messages.length + 2,
@@ -150,7 +151,7 @@ const Chat = () => {
       seen: true
     };
     setMessages(prevMessages => [...prevMessages, newMsg]);
-    speak(botResponse); // Speak the bot's response
+    speak(botResponse);
   };
 
   const speak = (text) => {
@@ -161,16 +162,61 @@ const Chat = () => {
   const toggleListening = () => {
     if (isListening) {
       recognitionRef.current.stop();
+      setIsListening(false);
     } else {
       recognitionRef.current.start();
+      setIsListening(true);
     }
-    setIsListening(!isListening);
+  };
+
+  const startRecording = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const recorder = new MediaRecorder(stream);
+    setMediaRecorder(recorder);
+
+    recorder.ondataavailable = (event) => {
+      audioChunks.push(event.data);
+    };
+
+    recorder.onstop = () => {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const a = document.createElement('a');
+      a.href = audioUrl;
+      a.download = 'recording.wav';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setAudioChunks([]);
+    };
+
+    recorder.start();
+    recordingTimeoutRef.current = setTimeout(() => {
+      stopRecording();
+    }, 30000);
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder) {
+      mediaRecorder.stop();
+    }
+    clearTimeout(recordingTimeoutRef.current);
+    setIsListening(false);
+  };
+
+  const handleVoiceDebate = () => {
+    if (isListening) {
+      stopRecording();
+    } else {
+      startRecording();
+      toggleListening();
+    }
   };
 
   const handleDeleteChat = (chatId) => {
     const updatedChats = sidebarChats.filter(chat => chat.id !== chatId);
     setSidebarChats(updatedChats);
-    
+
     if (selectedChat === chatId) {
       setSelectedChat(updatedChats.length > 0 ? updatedChats[0].id : null);
       setMessages([]);
@@ -182,56 +228,56 @@ const Chat = () => {
   }, [messages]);
 
   return (
-    <div className="flex h-screen bg-gray-50 text-gray-900">
+    <div className="flex h-screen bg-[#F8F8F8]">
       {/* Sidebar */}
       <Sidebar chats={sidebarChats} selectedChat={selectedChat} setSelectedChat={setSelectedChat} onDeleteChat={handleDeleteChat} />
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Chat Header */}
-        <div className="p-4 border-b border-gray-200 bg-white flex justify-between items-center">
-          <h2 className="font-medium">Luis Easton</h2>
+        <div className="p-4 border-b border-[#D3C5E5] flex justify-between items-center bg-white">
+          <h2 className="font-medium text-gray-800">Luis Easton</h2>
           <div className="flex items-center space-x-4">
-            <Star className="w-5 h-5 text-gray-600 cursor-pointer hover:text-yellow-400 transition-colors" />
-            <Settings className="w-5 h-5 text-gray-600 cursor-pointer hover:text-blue-500 transition-colors" />
-            <button 
+            <Star className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors" />
+            <Settings className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors" />
+            <button
               onClick={() => setIsNewChatModalOpen(true)}
-              className="flex items-center p-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+              className="flex items-center p-2 bg-[#D3C5E5] text-gray-800 rounded-lg hover:bg-[#D3C5E5]/90 transition-colors"
             >
               <span>Create New Chat</span>
             </button>
-            <button 
+            <button
               onClick={() => setIsModalOpen(true)}
-              className="flex items-center p-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+              className="flex items-center p-2 bg-[#D3C5E5] text-gray-800 rounded-lg hover:bg-[#D3C5E5]/90 transition-colors"
             >
-              <User className="w-5 h-5 text-gray-600" />
+              <User className="w-5 h-5" />
             </button>
-            <button 
-              onClick={toggleListening}
-              className={`flex items-center p-2 rounded-lg transition-colors ${isListening ? 'bg-red-200' : 'bg-gray-200'} hover:bg-gray-300`}
+            <button
+              onClick={handleVoiceDebate}
+              className={`flex items-center p-2 rounded-lg transition-colors ${isListening ? 'bg-red-200' : 'bg-[#D3C5E5]'} hover:bg-[#D3C5E5]/90`}
             >
-              {isListening ? <StopCircle className="w-5 h-5 text-red-600" /> : <Mic className="w-5 h-5 text-gray-600" />}
+              {isListening ? <StopCircle className="w-5 h-5 text-red-600" /> : <Mic className="w-5 h-5 text-gray-800" />}
             </button>
           </div>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#F8F8F8]">
           {messages.map((message) => (
             <div
               key={message.id}
               className={`flex ${message.type === 'sent' ? 'justify-end' : 'justify-start'}`}
             >
               {message.type === 'received' && (
-                <div className="w-8 h-8 rounded-xl bg-purple-400 flex items-center justify-center text-white mr-2 shadow-sm">
-                  {message.avatar}
+                <div className="w-8 h-8 rounded-xl bg-[#D3C5E5] flex items-center justify-center text-gray-800 mr-2 shadow-sm">
+                  <Bot/>
                 </div>
               )}
-              <div 
+              <div
                 className={`max-w-xl rounded-2xl p-3 shadow-sm
-                  ${message.type === 'sent' 
-                    ? 'bg-blue-100' 
-                    : 'bg-gray-100'
+                  ${message.type === 'sent'
+                    ? 'bg-[#D3C5E5] text-gray-800'
+                    : 'bg-white text-gray-800'
                   }`}
               >
                 {message.isFile ? (
@@ -242,7 +288,7 @@ const Chat = () => {
                 ) : (
                   <p>{message.content}</p>
                 )}
-                <span className="text-xs text-gray-500">{message.time}</span>
+                <span className="text-xs text-gray-00">{message.time}</span>
               </div>
             </div>
           ))}
@@ -250,7 +296,7 @@ const Chat = () => {
         </div>
 
         {/* Message Input */}
-        <div className="p-4 bg-white border-t border-gray-200">
+        <div className="p-4 bg-white border-t border-[#D3C5E5]">
           <div className="flex items-center space-x-2">
             <input
               type="text"
@@ -258,11 +304,11 @@ const Chat = () => {
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(newMessage)}
               placeholder="Type your message..."
-              className="flex-1 p-2 rounded-xl border border-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 p-2 rounded-xl border border-[#D3C5E5] placeholder-[#D3C5E5]/70 focus:outline-none focus:ring-2 focus:ring-[#D3C5E5]"
             />
             <button
               onClick={() => handleSendMessage(newMessage)}
-              className="p-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+              className="p-2 rounded-xl bg-[#D3C5E5] text-gray-800 hover:bg-[#D3C5E5]/90 transition-colors"
             >
               <Send className="w-5 h-5" />
             </button>
@@ -270,9 +316,8 @@ const Chat = () => {
         </div>
       </div>
 
-      {/* Modal for User Profile */}
+      {/* Modals */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
-      {/* Modal for New Chat */}
       <NewChatModal isOpen={isNewChatModalOpen} onClose={() => setIsNewChatModalOpen(false)} />
     </div>
   );
