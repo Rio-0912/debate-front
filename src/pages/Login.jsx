@@ -40,19 +40,19 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validateForm()) return;
-        
+
         setLoading(true);
         try {
-            const url = isSignup ? 
-                'http://localhost:8000/api/auth/signup' : 
+            const url = isSignup ?
+                'http://localhost:8000/api/auth/signup' :
                 'http://localhost:8000/api/auth/login';
-            
-            const res = await axios.post(url, formData, { 
-                withCredentials: true 
+
+            const res = await axios.post(url, formData, {
+                withCredentials: true
             });
-            
+
             localStorage.setItem('authToken', res.data.token);
-            navigate('/home');
+            navigate('/chat');
         } catch (err) {
             setError(err.response?.data?.message || 'Authentication failed');
         } finally {
@@ -64,7 +64,7 @@ const Login = () => {
         <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#0f0f0] to-[#d3c5e57a]">
             <div className="relative bg-red backdrop-blur-lg p-8 rounded-3xl shadow-2xl w-96 transition-all duration-500 hover:shadow-xl">
                 <div className="absolute inset-0 bg-[#b093d5]/50 rounded-3xl backdrop-blur-sm" />
-                
+
                 <div className="relative z-10">
                     <h2 className="text-4xl font-bold text-purple-800 text-center mb-8 transform hover:scale-105 transition-transform">
                         {isSignup ? 'Create Account' : 'Welcome Back'}

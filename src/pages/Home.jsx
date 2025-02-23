@@ -11,7 +11,7 @@ const Home = () => {
     if (!user && !loading) {
         return <NotLoggedIn />;
     } else {
-        return < LoggedIn />
+        return < Navigate to='/chat' />
     }
 };
 
