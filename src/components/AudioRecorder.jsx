@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Client } from "@gradio/client"; // Import Gradio Client
-import {  Mic, StopCircle } from 'lucide-react';
+import { Mic, StopCircle, Loader } from 'lucide-react';
+
 
 
 const AudioRecorder = ({ onTextRecognized }) => {
     const [isRecording, setIsRecording] = useState(false);
-    const [blobURL, setBlobURL] = useState('');
     const [mediaRecorder, setMediaRecorder] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
     const audioChunks = useRef([]);
 
     useEffect(() => {
@@ -20,10 +21,10 @@ const AudioRecorder = ({ onTextRecognized }) => {
                 };
 
                 recorder.onstop = async () => {
+                    setIsLoading(true);
                     const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
-                    const url = URL.createObjectURL(audioBlob);
-                    setBlobURL(url);
-                    await sendAudioToGradio(audioBlob); // Send audio blob to Gradio
+                    await sendAudioToGradio(audioBlob);
+                    setIsLoading(false);
                 };
             })
             .catch((error) => {
@@ -47,33 +48,59 @@ const AudioRecorder = ({ onTextRecognized }) => {
     };
 
     const sendAudioToGradio = async (audioBlob) => {
-        const client = await Client.connect("Rio0913/openai-whisper-large-v3-turbo");
-        const result = await client.predict("/predict", { 
-            param_0: audioBlob, 
-        });
+        try {
+            const client = await Client.connect("Rio0913/openai-whisper-large-v3-turbo");
+            const result = await client.predict("/predict", {
+                param_0: audioBlob,
+            });
 
-        // Extract the text from the response
-        const data = result.data[0]; // Get the raw string
-        console.log(data);
-        
-        const match = data.match(/text='([^']+)'/); // Split by single quote and get the second element
-        if (match && match[1]) {
-            onTextRecognized(match[1]); // Call the callback with the recognized text
+            const data = result.data[0];
+            console.log("Raw response data:", data);
+
+            // More flexible regex pattern that handles:
+            // - Both single and double quotes
+            // - Multiple spaces before/after quotes
+            // - Optional spaces after 'text='
+            const regex = /text\s*=\s*['"]([^'"]+)['"]/;
+            const match = data.match(regex);
+
+            if (match && match[1]) {
+                const extractedText = match[1].trim();
+                console.log("Extracted text:", extractedText);
+                onTextRecognized(extractedText);
+            } else {
+                // Fallback method if regex fails
+                const textStart = data.indexOf('text=');
+                if (textStart !== -1) {
+                    let extractedText = data.slice(textStart + 5); // Skip 'text='
+                    // Remove leading/trailing quotes and spaces
+                    extractedText = extractedText.replace(/^[\s'"]+|[\s'"]+$/g, '');
+                    // Remove anything after the first comma if it exists
+                    extractedText = extractedText.split(',')[0].trim();
+
+                    if (extractedText) {
+                        console.log("Extracted text (fallback):", extractedText);
+                        onTextRecognized(extractedText);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Error in speech recognition:", error);
         }
     };
 
     return (
-
-        <div className={`"flex flex-col items-center" `}>
+        <div className="flex flex-col items-center">
             {!isRecording ? (
-                <span onClick={startRecording} className="w-5 h-5 text-gray-800">
-                    <Mic/>
+                <span onClick={startRecording} className="w-5 h-5 text-gray-800 cursor-pointer">
+                    <Mic />
                 </span>
             ) : (
-                <span onClick={stopRecording} className="w-5 h-5 text-red-600">
-                    <StopCircle/>
+                <span onClick={stopRecording} className="w-5 h-5 text-red-600 cursor-pointer">
+                    <StopCircle />
                 </span>
             )}
+            {isLoading && <Loader className="w-5 h-5 animate-spin mt-2 text-blue-600" />}
         </div>
     );
 };

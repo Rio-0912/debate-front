@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import Markdown from 'react-markdown';
 
 const AiTypingMessage = ({ message, onComplete }) => {
     const [displayedText, setDisplayedText] = useState('');
@@ -26,7 +27,7 @@ const AiTypingMessage = ({ message, onComplete }) => {
     return (
         <div className="flex justify-start">
             <div className="max-w-xl rounded-2xl p-3 m-2 shadow-sm bg-white text-gray-800">
-                <p dangerouslySetInnerHTML={{ __html: displayedText.replace(/\n/g, "<br>") }} />
+                <Markdown>{displayedText}</Markdown>
                 {isComplete && (
                     <span className="text-xs text-gray-600">
                         {new Date().toLocaleTimeString([], {

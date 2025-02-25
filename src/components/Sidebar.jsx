@@ -8,22 +8,21 @@ const Sidebar = ({ chats, selectedChat, setSelectedChat, onDeleteChat, fetchChat
     };
 
     return (
-        <div className="w-80 bg-white border-r border-[#D3C5E5] flex flex-col h-full">
+        <div className="w-80 bg-white border-r border-[#D3C5E5] flex flex-col h-full overflow-hidden">
             <div className="p-4 border-b border-[#D3C5E5]">
                 <h1 className="text-xl font-semibold text-gray-800">Debates</h1>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden">
                 {chats && chats.length > 0 ? chats.map((chat) => (
                     <div
                         key={chat._id}
-                        className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 border-b border-[#D3C5E5] ${selectedChat === chat._id ? 'bg-[#D3C5E5]/20' : ''
-                            }`}
+                        className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 border-b border-[#D3C5E5] ${selectedChat === chat._id ? 'bg-[#D3C5E5]/20' : ''}`}
                         onClick={() => handleChatClick(chat._id)}
                     >
-                        <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                                <h3 className="font-medium text-gray-800 truncate">{chat.title}</h3>
+                        <div className="flex justify-between items-center gap-2">
+                            <div className="flex-1 min-w-0">
+                                <h3 className="font-medium text-gray-800 truncate w-full">{chat.title}</h3>
                                 <div className="flex items-center gap-2 mt-1">
                                     <MessageSquare className="w-4 h-4 text-gray-500" />
                                     <span className="text-sm text-gray-500">
@@ -36,7 +35,7 @@ const Sidebar = ({ chats, selectedChat, setSelectedChat, onDeleteChat, fetchChat
                                     e.stopPropagation();
                                     onDeleteChat(chat._id);
                                 }}
-                                className="p-1 hover:bg-red-50 rounded-full group"
+                                className="p-1 hover:bg-red-50 rounded-full group shrink-0"
                             >
                                 <Trash2 className="w-4 h-4 text-gray-400 group-hover:text-red-500" />
                             </button>

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Clock, Star, Settings, X, Paperclip, Send, Bot, User as UserIcon, Mic, StopCircle, User } from 'lucide-react';
+import { Clock, Star, Settings, X, Paperclip, Send, Bot, User as UserIcon, Mic, StopCircle, User, Volume2 } from 'lucide-react';
 import { AccountCircle, Logout } from '@mui/icons-material';
 import { io } from "socket.io-client";
 import axios from 'axios';
@@ -11,6 +11,7 @@ import AudioRecorder from '../components/AudioRecorder';
 import { useAuth } from '../context/AuthContext';
 import { backend } from '../assets/utils/constants';
 import AiTypingMessage from '../components/AiTypingMessage';
+import Markdown from 'react-markdown';
 
 const Chat = () => {
   // State management
@@ -120,8 +121,12 @@ const Chat = () => {
 
       if (response.data.success) {
         const sortedDebates = response.data.debates.sort((a, b) => {
-          const timestampA = a.timestamp || a.createdAt || 0;
-          const timestampB = b.timestamp || b.createdAt || 0;
+          const lastMessageA = a.stream?.length ? a.stream[a.stream.length - 1].timestamp : null;
+          const lastMessageB = b.stream?.length ? b.stream[b.stream.length - 1].timestamp : null;
+
+          const timestampA = lastMessageA || a.timestamp || a.createdAt || 0;
+          const timestampB = lastMessageB || b.timestamp || b.createdAt || 0;
+
           return new Date(timestampB) - new Date(timestampA);
         });
 
@@ -139,6 +144,7 @@ const Chat = () => {
       setIsLoading(false);
     }
   };
+
 
   const fetchChatDetails = async (chatId) => {
     try {
@@ -188,7 +194,6 @@ const Chat = () => {
         timestamp: new Date().toISOString(),
         pending: true
       };
-
       setMessages(prev => [...prev, optimisticMessage]);
       setNewMessage('');
       scrollToBottom(true);
@@ -291,6 +296,39 @@ const Chat = () => {
     setUserModal(true);
   };
 
+  const speakText = (text) => {
+    if (!text) return;
+
+    const synth = window.speechSynthesis;
+    const utterance = new SpeechSynthesisUtterance(text);
+
+    utterance.rate = 1; // Normal speed
+    utterance.pitch = 1; // Normal pitch
+    utterance.volume = 10; // Max volume
+
+    synth.speak(utterance);
+  };
+
+  const handleRecognizedText = (text) => {
+    console.log("Received recognized text in Chat component:", text); // Debug log
+
+    if (text) {
+      console.log("Setting new message:", text); // Debug log
+      setNewMessage(text);
+
+      console.log("Triggering send button click..."); // Debug log
+      setTimeout(() => {
+        if (sendButtonRef.current) {
+          console.log("Send button found, clicking..."); // Debug log
+          sendButtonRef.current.click();
+        } else {
+          console.error("Send button ref not found!"); // Debug error
+        }
+      }, 100);
+    } else {
+      console.warn("Received empty text in handleRecognizedText"); // Debug warning
+    }
+  };
   return (
     <div className="flex h-screen bg-[#F8F8F8]">
       <Sidebar
@@ -318,6 +356,9 @@ const Chat = () => {
             <AccountCircle
               className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors"
               onClick={openModal}
+            />
+            <AudioRecorder
+              onTextRecognized={handleRecognizedText}
             />
             <button
               onClick={() => setIsNewChatModalOpen(true)}
@@ -353,7 +394,16 @@ const Chat = () => {
                       } ${message.sender === 'User' ? 'bg-[#D3C5E5] text-gray-800' : 'bg-white text-gray-800'
                       }`}
                   >
-                    <p dangerouslySetInnerHTML={{ __html: message.message.replace(/\n/g, "<br>") }} />
+                    {message.sender === 'User' ? (
+                      <p dangerouslySetInnerHTML={{ __html: message.message.replace(/\n/g, "<br>") }} />
+                    ) : (
+                      <div className="">
+                        <Markdown>{message.message}</Markdown>
+                        <button onClick={() => speakText(message.message)} className="text-gray-600 hover:text-gray-800" sx={{ cursor: 'pointer' }}>
+                          <Volume2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                    )}
                     <span className="text-xs text-gray-600">
                       {new Date(message.timestamp).toLocaleTimeString([], {
                         hour: '2-digit',
@@ -363,6 +413,7 @@ const Chat = () => {
                   </div>
                 </div>
               ))}
+
               {!isMessageComplete && pendingAiMessage && (
                 <AiTypingMessage
                   message={pendingAiMessage.message}

@@ -47,7 +47,8 @@ const NewChatModal = ({ onClose, onCreateChat }) => {
             onCreateChat(response.data);
             setSnackbar({ open: true, message: 'Debate created successfully!', severity: 'success' });
 
-            setTimeout(() => onClose(), 1500); // Close modal after showing success
+            setTimeout(() => onClose(), 150); // Close modal after showing success
+            window.location.reload();
         } catch (error) {
             console.error('Error creating new chat:', error.response || error);
             setSnackbar({ open: true, message: error.response?.data?.message || 'Failed to create debate.', severity: 'error' });
