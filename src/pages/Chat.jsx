@@ -1,19 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Clock, Star, Settings, X, Paperclip, Send, Bot, User as UserIcon, Mic, StopCircle } from 'lucide-react';
+import { Clock, Star, Settings, X, Paperclip, Send, Bot, User as UserIcon, Mic, StopCircle, User } from 'lucide-react';
+import { AccountCircle, Logout } from '@mui/icons-material';
+import { io } from "socket.io-client";
+import axios from 'axios';
+
 import Sidebar from '../components/Sidebar';
 import Modal from '../components/Modal';
 import NewChatModal from '../components/NewChatModal';
 import AudioRecorder from '../components/AudioRecorder';
-import axios from 'axios';
-
-import { backend } from '../assets/utils/constants';
-
 import { useAuth } from '../context/AuthContext';
-import { Logout } from '@mui/icons-material';
-import { io } from "socket.io-client";
-
+import { backend } from '../assets/utils/constants';
+import AiTypingMessage from '../components/AiTypingMessage';
 
 const Chat = () => {
+  // State management
   const { logout } = useAuth();
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -21,68 +21,101 @@ const Chat = () => {
   const [newMessage, setNewMessage] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
-  const messagesEndRef = useRef(null);
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef(null);
-  const [mediaRecorder, setMediaRecorder] = useState(null);
-  const [audioChunks, setAudioChunks] = useState([]);
-  const recordingTimeoutRef = useRef(null);
-
-  useEffect(() => {
-    const fetchDebates = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await axios.get(`${backend}/api/debate/getAllDebates/`, {
-          headers: {
-            'token': `${token}` // Pass the token in the header
-          }
-        });
-
-        if (response.data.success) {
-          const sortedDebates = response.data.debates.sort((a, b) =>
-            new Date(b.createdAt || b.timestamp) - new Date(a.createdAt || a.timestamp)
-          );
-
-          setSidebarChats(sortedDebates);
-        } else {
-          console.error('Failed to fetch debates:', response.data.message);
-        }
-      } catch (error) {
-        console.error('Error fetching debates:', error);
-      }
-    };
-
-    fetchDebates();
-  }, []);
-
-
-  const [socket, setSocket] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [socketError, setSocketError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [pendingAiMessage, setPendingAiMessage] = useState(null);
+  const [isMessageComplete, setIsMessageComplete] = useState(true);
+  const [userModal, setUserModal] = useState(false);
+
+  // Refs
+  const messagesEndRef = useRef(null);
+  const messageContainerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const globalSocket = useRef(null);
-  const messageContainerRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
+  const [socket, setSocket] = useState(null);
 
-  // Add new function to check if scroll is at bottom
+  // Socket initialization
+  const initializeSocket = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return null;
+
+    const newSocket = io(backend, {
+      withCredentials: true,
+      extraHeaders: { 'token': token },
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
+
+    setupSocketListeners(newSocket);
+    return newSocket;
+  };
+
+  const setupSocketListeners = (socket) => {
+    socket.on("connect", () => {
+      setConnectionStatus('connected');
+      setSocketError(null);
+      console.log("Connected to socket");
+
+      if (selectedChat) {
+        socket.emit('join', selectedChat);
+      }
+    });
+
+    socket.on("connect_error", (error) => {
+      setConnectionStatus('error');
+      setSocketError(error.message);
+      console.error("Socket connection error:", error);
+    });
+
+    socket.on("messages", (updatedStream) => {
+      if (updatedStream.length > messages.length && updatedStream[updatedStream.length - 1].sender !== 'User') {
+        const newMessage = updatedStream[updatedStream.length - 1];
+        setPendingAiMessage(newMessage);
+        setIsMessageComplete(false);
+      } else {
+        setMessages(updatedStream);
+      }
+      setTimeout(() => scrollToBottom(), 100);
+    });
+
+    socket.on("typing", () => setIsTyping(true));
+    socket.on("stopTyping", () => setIsTyping(false));
+
+    socket.on("messageFailed", (error) => {
+      setMessages(prev => prev.filter(msg => !msg.pending));
+      alert("Failed to send message: " + error.message);
+    });
+
+    socket.on("error", (error) => {
+      console.error("Socket error:", error);
+      setSocketError(error);
+    });
+  };
+
+  // Scroll management
   const isScrolledToBottom = () => {
     if (!messageContainerRef.current) return true;
     const { scrollHeight, scrollTop, clientHeight } = messageContainerRef.current;
     return Math.abs(scrollHeight - scrollTop - clientHeight) < 10;
   };
 
-  // Updated scroll function
   const scrollToBottom = (force = false) => {
     if (force || isScrolledToBottom()) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   };
 
+  // Data fetching
   const fetchDebates = async () => {
     try {
+      setIsLoading(true);
       const token = localStorage.getItem("token");
-      const response = await axios.get('http://localhost:8000/api/debate/getAllDebates/', {
-        headers: {
-          'token': `${token}`
-        }
+      const response = await axios.get(`${backend}/api/debate/getAllDebates/`, {
+        headers: { 'token': token }
       });
 
       if (response.data.success) {
@@ -102,142 +135,17 @@ const Chat = () => {
       }
     } catch (error) {
       console.error('Error fetching debates:', error);
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const newGlobalSocket = io("ws://localhost:8000", {
-      withCredentials: true,
-      extraHeaders: {
-        'token': token
-      }
-    });
-
-    newGlobalSocket.on("connect", () => {
-      console.log("Connected to global socket");
-    });
-
-    newGlobalSocket.on("chatCreated", () => {
-      console.log("New chat created, refreshing list");
-      fetchDebates();
-    });
-
-    newGlobalSocket.on("chatUpdated", () => {
-      console.log("Chat updated, refreshing list");
-      fetchDebates();
-    });
-
-    newGlobalSocket.on("chatDeleted", () => {
-      console.log("Chat deleted, refreshing list");
-      fetchDebates();
-    });
-
-    globalSocket.current = newGlobalSocket;
-    fetchDebates();
-
-    return () => {
-      if (globalSocket.current) {
-        globalSocket.current.disconnect();
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (selectedChat) {
-      const token = localStorage.getItem("token");
-      const newSocket = io("ws://localhost:8000", {
-        withCredentials: true,
-        extraHeaders: {
-          'token': token
-        }
-      });
-
-      newSocket.emit('join', selectedChat);
-
-      newSocket.on("messages", (updatedStream) => {
-        console.log(updatedStream)
-        setMessages(updatedStream);
-        // Scroll to bottom after messages update
-        setTimeout(() => scrollToBottom(), 100);
-      });
-
-      newSocket.on("typing", () => {
-        setIsTyping(true);
-      });
-
-      newSocket.on("stopTyping", () => {
-        setIsTyping(false);
-      });
-
-      newSocket.on("error", (error) => {
-        console.error("Socket error:", error);
-      });
-
-      setSocket(newSocket);
-
-      return () => {
-        newSocket.disconnect();
-      };
-    }
-  }, [selectedChat]);
-
-  // Add effect to scroll to bottom when messages change
-  useEffect(() => {
-    scrollToBottom(true);
-  }, [messages]);
-
-  const handleTyping = (e) => {
-    setNewMessage(e.target.value);
-
-    if (!socket || !selectedChat) return;
-
-    if (!isTyping) {
-      setIsTyping(true);
-      socket.emit('typing', { debateId: selectedChat });
-    }
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
-    typingTimeoutRef.current = setTimeout(() => {
-      setIsTyping(false);
-      socket.emit('stopTyping', { debateId: selectedChat });
-    }, 1000);
-  };
-
-  const handleSendMessage = (content) => {
-    if (!socket || !selectedChat || !content.trim()) return;
-    const response = axios.get(`http://localhost:8000/api/debate/getDebate/${selectedChat}`, {
-      headers: { 'token': localStorage.getItem('token') }
-    }).then(response => {
-      const message = {
-        debateId: selectedChat,
-        msg: content.replace(/\n/g, "<br>"),
-        mood: response.data.debate.mood,
-        topic: response.data.debate.topic,
-        stand: response.data.debate.aiInclination
-      };
-      console.log(message);
-      socket.emit("debateMessage", { message });
-      setNewMessage('');
-      scrollToBottom(true);
-
-      globalSocket.current?.emit("chatUpdated");
-    }).catch(error => {
-      console.error('Error fetching debate details:', error);
-    });
   };
 
   const fetchChatDetails = async (chatId) => {
     try {
+      setIsLoading(true);
       const token = localStorage.getItem("token");
-
       const response = await axios.get(`${backend}/api/debate/getDebate/${chatId}`, {
-        headers: {
-          'token': `${token}` // Pass the token in the header
-        }
+        headers: { 'token': token }
       });
 
       if (response.data.success) {
@@ -246,14 +154,70 @@ const Chat = () => {
       }
     } catch (error) {
       console.error('Error fetching chat details:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Message handling
+  const handleTyping = (e) => {
+    setNewMessage(e.target.value);
+
+    if (!socket || !selectedChat) return;
+
+    if (!isTyping) {
+      socket.emit('typing', { debateId: selectedChat });
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      socket.emit('stopTyping', { debateId: selectedChat });
+    }, 1000);
+  };
+
+  const handleSendMessage = async (content) => {
+    if (!socket || !selectedChat || !content.trim()) return;
+
+    try {
+      const optimisticMessage = {
+        sender: 'User',
+        message: content.replace(/\n/g, "<br>"),
+        timestamp: new Date().toISOString(),
+        pending: true
+      };
+
+      setMessages(prev => [...prev, optimisticMessage]);
+      setNewMessage('');
+      scrollToBottom(true);
+
+      const response = await axios.get(`${backend}/api/debate/getDebate/${selectedChat}`, {
+        headers: { 'token': localStorage.getItem('token') }
+      });
+
+      const message = {
+        debateId: selectedChat,
+        msg: content.replace(/\n/g, "<br>"),
+        mood: response.data.debate.mood,
+        topic: response.data.debate.topic,
+        stand: response.data.debate.aiInclination
+      };
+
+      socket.emit("debateMessage", { message });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages(prev => prev.filter(msg => !msg.pending));
+      alert("Failed to send message. Please try again.");
+    }
+  };
+
+  // Chat management
   const handleCreateChat = async (newChat) => {
     setSidebarChats(prev => [...prev, { ...newChat, stream: newChat.stream || [] }]);
     globalSocket.current?.emit("chatCreated");
   };
-
 
   const handleDeleteChat = async (chatId) => {
     if (!chatId) return;
@@ -263,7 +227,7 @@ const Chat = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.delete(`http://localhost:8000/api/debate/delete/${chatId}`, {
+      const response = await axios.delete(`${backend}/api/debate/delete/${chatId}`, {
         headers: { 'token': token }
       });
 
@@ -280,11 +244,51 @@ const Chat = () => {
     }
   };
 
-  // Function to handle recognized text
-  const handleTextRecognized = (recognizedText) => {
-    console.log("Recognized Text:", recognizedText);
-    // You can also update the state or perform other actions with the recognized text here
-    setNewMessage(recognizedText);
+  // Effects
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const newGlobalSocket = io(backend, {
+      withCredentials: true,
+      extraHeaders: { 'token': token }
+    });
+
+    newGlobalSocket.on("connect", () => {
+      console.log("Connected to global socket");
+    });
+
+    newGlobalSocket.on("chatCreated", fetchDebates);
+    newGlobalSocket.on("chatUpdated", fetchDebates);
+    newGlobalSocket.on("chatDeleted", fetchDebates);
+
+    globalSocket.current = newGlobalSocket;
+    fetchDebates();
+
+    return () => {
+      if (globalSocket.current) {
+        globalSocket.current.disconnect();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (selectedChat) {
+      const newSocket = initializeSocket();
+      setSocket(newSocket);
+
+      return () => {
+        if (newSocket) {
+          newSocket.disconnect();
+        }
+      };
+    }
+  }, [selectedChat]);
+
+  useEffect(() => {
+    scrollToBottom(true);
+  }, [messages]);
+
+  const openModal = () => {
+    setUserModal(true);
   };
 
   return (
@@ -298,14 +302,22 @@ const Chat = () => {
       />
 
       <div className="flex-1 flex flex-col">
+        {/* Header */}
         <div className="p-4 border-b border-[#D3C5E5] flex justify-between items-center bg-white">
           <h2 className="font-medium text-gray-800">
             {selectedChat ? sidebarChats.find(chat => chat._id === selectedChat)?.title : 'Select a Chat'}
           </h2>
           <div className="flex items-center space-x-4">
+            {connectionStatus === 'error' && (
+              <span className="text-red-500 text-sm">Connection error</span>
+            )}
             <Logout
               className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors"
               onClick={logout}
+            />
+            <AccountCircle
+              className="w-5 h-5 text-gray-800 cursor-pointer hover:text-gray-800/80 transition-colors"
+              onClick={openModal}
             />
             <button
               onClick={() => setIsNewChatModalOpen(true)}
@@ -313,47 +325,64 @@ const Chat = () => {
             >
               Create New Debate
             </button>
-            <button
-              className={`flex items-center p-2 rounded-lg transition-colors ${isListening ? 'bg-red-200' : 'bg-[#D3C5E5]'} hover:bg-[#D3C5E5]/90`}
-            >
-              <AudioRecorder onTextRecognized={handleTextRecognized} />
-            </button>
           </div>
         </div>
 
+        {/* Messages */}
         <div
           ref={messageContainerRef}
           className="flex-1 overflow-y-auto p-4 bg-[#F8F8F8]"
         >
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${message.sender === 'User' ? 'justify-end' : 'justify-start'}`}
-            >
-
-              <div
-                className={`max-w-xl rounded-2xl p-3 m-2 shadow-sm
-    ${message.sender === 'User' ? 'bg-[#D3C5E5] text-gray-800' : 'bg-white text-gray-800'}`}
-              >
-                <p dangerouslySetInnerHTML={{ __html: message.message.replace(/\n/g, "<br>") }} />
-                <span className="text-xs text-gray-600">
-                  {new Date(message.timestamp).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </span>
-              </div>
-
+          {!selectedChat ? (
+            <div className="flex justify-center items-center h-full">
+              <p className="text-gray-500 text-lg">Please select a chat to start messaging</p>
             </div>
-          ))}
-          {isTyping && (
-            <div className="text-sm text-gray-500 italic">
-              Someone is typing...
+          ) : isLoading ? (
+            <div className="flex justify-center items-center h-full">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D3C5E5]"></div>
             </div>
+          ) : (
+            <>
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex ${message.sender === 'User' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-xl rounded-2xl p-3 m-2 shadow-sm ${message.pending ? 'opacity-50' : ''
+                      } ${message.sender === 'User' ? 'bg-[#D3C5E5] text-gray-800' : 'bg-white text-gray-800'
+                      }`}
+                  >
+                    <p dangerouslySetInnerHTML={{ __html: message.message.replace(/\n/g, "<br>") }} />
+                    <span className="text-xs text-gray-600">
+                      {new Date(message.timestamp).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {!isMessageComplete && pendingAiMessage && (
+                <AiTypingMessage
+                  message={pendingAiMessage.message}
+                  onComplete={() => {
+                    setIsMessageComplete(true);
+                    setMessages(prev => [...prev, pendingAiMessage]);
+                    setPendingAiMessage(null);
+                  }}
+                />
+              )}
+              {isTyping && (
+                <div className="text-sm text-gray-500 italic">
+                  Someone is typing...
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </>
           )}
-          <div ref={messagesEndRef} />
         </div>
-
+        {/* Input */}
         <div className="p-4 bg-white border-t border-[#D3C5E5]">
           <div className="flex items-center space-x-2">
             <textarea
@@ -365,26 +394,34 @@ const Chat = () => {
                   handleSendMessage(newMessage);
                 }
               }}
+              disabled={!selectedChat || connectionStatus === 'error'}
               placeholder="Type your message... (Shift + Enter for new line)"
               className="flex-1 p-2 rounded-xl border border-[#D3C5E5] placeholder-[#D3C5E5]/70 focus:outline-none focus:ring-2 focus:ring-[#D3C5E5] resize-none"
               rows="2"
             />
             <button
               onClick={() => handleSendMessage(newMessage)}
-              className="p-2 rounded-xl bg-[#D3C5E5] text-gray-800 hover:bg-[#D3C5E5]/90 transition-colors"
+              disabled={!selectedChat || connectionStatus === 'error'}
+              className="p-2 rounded-xl bg-[#D3C5E5] text-gray-800 hover:bg-[#D3C5E5]/90 transition-colors disabled:opacity-50"
             >
               <Send className="w-5 h-5" />
             </button>
           </div>
         </div>
       </div>
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
 
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
       {isNewChatModalOpen && (
         <NewChatModal
           isOpen={isNewChatModalOpen}
           onClose={() => setIsNewChatModalOpen(false)}
           onCreateChat={handleCreateChat}
+        />
+      )}
+      {userModal && (
+        <Modal
+          isOpen={userModal}
+          onClose={() => setUserModal(false)}
         />
       )}
     </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Bot, MessageSquare, Brain, Trophy, Users, School, Timer, Award } from "lucide-react";
+import { Bot, MessageSquare, Brain, Trophy, Users, School, Timer, Award, Languages, Speech, CircleOff, MessageCircleX, Ghost } from "lucide-react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router";
 
@@ -30,10 +30,10 @@ const NotLoggedIn = () => {
     ];
 
     const stats = [
-        { icon: <Users className="w-6 h-6" />, value: "5000+", label: "Active Debaters" },
-        { icon: <School className="w-6 h-6" />, value: "200+", label: "Debate Clubs" },
-        { icon: <Trophy className="w-6 h-6" />, value: "98%", label: "Success Rate" },
-        { icon: <Award className="w-6 h-6" />, value: "150+", label: "Tournaments" }
+        { icon: <Ghost className="w-6 h-6" />, label: "No Hallucinations" },
+        { icon: <Speech className="w-6 h-6" />, label: "Text to Speech" },
+        { icon: <MessageCircleX className="w-6 h-6" />, label: "Language Control" },
+        { icon: <Languages className="w-6 h-6" />, label: "Multilingual Support" }
     ];
 
     return (
@@ -44,7 +44,7 @@ const NotLoggedIn = () => {
                     <div className="flex justify-between h-16">
                         <div className="flex items-center">
                             <Bot className="w-8 h-8 text-gray-700" />
-                            <span className="ml-2 text-xl font-semibold text-gray-700">DebateChat</span>
+                            <span className="ml-2 text-xl font-semibold text-gray-700">Debate AI</span>
                         </div>
                         <div className="flex items-center space-x-4">
                             <button
@@ -71,7 +71,7 @@ const NotLoggedIn = () => {
                             Master Debate with AI
                         </h1>
                         <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-                            Practice debate with our AI-powered platform. Get real-time feedback, 
+                            Practice debate with our AI-powered platform. Get real-time feedback,
                             structured training, and improve your skills with every session.
                         </p>
                         <motion.div
@@ -83,7 +83,7 @@ const NotLoggedIn = () => {
                                 onClick={() => navigate("/login")}
                                 className="px-8 py-4 bg-[#D3C5E5] text-gray-700 rounded-lg text-lg font-semibold hover:bg-[#D3C5E5]/80 transition-colors"
                             >
-                                Start Your Free Trial
+                                Start Debating
                             </button>
                         </motion.div>
                     </motion.div>
@@ -97,9 +97,6 @@ const NotLoggedIn = () => {
                     >
                         <div className="space-y-4">
                             <div className="flex items-start space-x-4">
-                                <div className="w-10 h-10 rounded-full bg-[#D3C5E5]/20 flex items-center justify-center">
-                                    <Bot className="w-6 h-6 text-gray-700" />
-                                </div>
                                 <div className="flex-1 bg-[#D3C5E5]/60 rounded-2xl p-4">
                                     <p className="text-gray-700">Let's practice debating the impact of artificial intelligence on education.</p>
                                 </div>
@@ -150,8 +147,7 @@ const NotLoggedIn = () => {
                                 className="bg-[#D3C5E5]/20 rounded-xl p-6 text-center shadow-sm"
                             >
                                 <div className="flex justify-center mb-2 text-gray-700">{stat.icon}</div>
-                                <div className="text-2xl font-bold text-gray-700">{stat.value}</div>
-                                <div className="text-sm text-gray-600">{stat.label}</div>
+                                <div className="text-xl text-gray-600">{stat.label}</div>
                             </motion.div>
                         ))}
                     </div>

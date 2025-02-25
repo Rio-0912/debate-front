@@ -14,7 +14,7 @@ const Sidebar = ({ chats, selectedChat, setSelectedChat, onDeleteChat, fetchChat
             </div>
 
             <div className="flex-1 overflow-y-auto">
-                {chats && chats.map((chat) => (
+                {chats && chats.length > 0 ? chats.map((chat) => (
                     <div
                         key={chat._id}
                         className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 border-b border-[#D3C5E5] ${selectedChat === chat._id ? 'bg-[#D3C5E5]/20' : ''
@@ -27,7 +27,7 @@ const Sidebar = ({ chats, selectedChat, setSelectedChat, onDeleteChat, fetchChat
                                 <div className="flex items-center gap-2 mt-1">
                                     <MessageSquare className="w-4 h-4 text-gray-500" />
                                     <span className="text-sm text-gray-500">
-                                        {chat.stream.length ? chat.stream.length : 0} messages
+                                        {chat.stream.length ? chat.stream.length : 0} {chat.stream.length <= 1 ? 'Message' : 'Messages'}
                                     </span>
                                 </div>
                             </div>
@@ -68,7 +68,11 @@ const Sidebar = ({ chats, selectedChat, setSelectedChat, onDeleteChat, fetchChat
                             </span>
                         </div>
                     </div>
-                ))}
+                )) :
+                    <div className="p-4 text-center text-gray-500">
+                        No chats yet.
+                    </div>
+                }
             </div>
         </div>
     );
